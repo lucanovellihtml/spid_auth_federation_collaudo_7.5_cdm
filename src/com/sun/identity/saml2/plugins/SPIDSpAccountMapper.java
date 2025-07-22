@@ -47,8 +47,6 @@ import com.sun.identity.saml2.meta.SAML2MetaManager;
 import com.sun.identity.saml2.meta.SAML2MetaUtils;
 import com.sun.identity.saml2.protocol.Response;
 
-import javax.xml.crypto.dsig.XMLObject;
-
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -56,6 +54,8 @@ import org.apache.http.impl.client.HttpClients;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import static com.sun.identity.saml2.plugins.DefaultAttributeMapper.SP;
 
 /**
  * This class <code>DefaultSPAccountMapper</code> is the default implementation
