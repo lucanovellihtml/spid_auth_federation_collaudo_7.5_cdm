@@ -32,6 +32,8 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.sun.identity.saml2.plugins.DefaultAttributeMapper.SP;
+
 /**
  * Classe introdotta per la gestione delle utenze eidas aziende;
  * E' stato cambiato il valore della variabile DBGNAME per creare un nuovo file

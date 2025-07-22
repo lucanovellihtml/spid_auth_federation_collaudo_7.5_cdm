@@ -43,6 +43,8 @@ import com.sun.identity.saml2.meta.SAML2MetaManager;
 import com.sun.identity.saml2.meta.SAML2MetaUtils;
 import com.sun.identity.saml2.protocol.Response;
 
+import static com.sun.identity.saml2.plugins.DefaultAttributeMapper.SP;
+
 /**
  * This class <code>DefaultSPAccountMapper</code> is the default implementation
  * of the <code>DefaultLibrarySPAccountMapper</code> that is used to map the

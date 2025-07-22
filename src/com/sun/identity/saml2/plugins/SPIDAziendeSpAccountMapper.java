@@ -42,29 +42,43 @@ import com.sun.identity.saml2.meta.SAML2MetaUtils;
 import com.sun.identity.saml2.protocol.Response;
 import com.sun.xml.bind.v2.TODO;
 
+import static com.sun.identity.saml2.plugins.DefaultAttributeMapper.SP;
+
 /**
  * Classe introdotta per la gestione delle utenze spid aziende;
- * E' stato cambiato il valore della variabile DBGNAME per creare un nuovo file di audit;
- * La logica di update e create è uguale alla logica per gestire le utenze cittadino;
- * Sono state aggiunge su AM delle andvanced variables per differenziare il cittadino dalla company;
- * Aggiunta la classe CustomAziendeRestUtil per la gestione delle company su IDM ---> CustomAziendeRestUtil
+ * E' stato cambiato il valore della variabile DBGNAME per creare un nuovo file
+ * di audit;
+ * La logica di update e create è uguale alla logica per gestire le utenze
+ * cittadino;
+ * Sono state aggiunge su AM delle andvanced variables per differenziare il
+ * cittadino dalla company;
+ * Aggiunta la classe CustomAziendeRestUtil per la gestione delle company su IDM
+ * ---> CustomAziendeRestUtil
  */
 public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapper {
-    //	private PrivateKey decryptionKey = null;
-    private static final String JAR_VERSION = "6.8";  //TODO
+    // private PrivateKey decryptionKey = null;
+    private static final String JAR_VERSION = "6.8"; // TODO
 
     /**
      * Regole di compilazione della console OpenAM:
-     * aggiungere i seguenti attributi globali nelle advanced properties (Configure > Server Defaults > Advanced)
+     * aggiungere i seguenti attributi globali nelle advanced properties (Configure
+     * > Server Defaults > Advanced)
      * - spid.createcompany.enable : se deve essere abilitata la creazione utente
-     * - spid.createcompany.ws : se deve essere abilitata la creazione utente via WS specificare l'url del servizio
-     * - spid.createcompany.static.attribute: specifica una lista di attributi statici da popolare in creazione dell'utenza
-     * - spid.createcompany.create.cdm.attribute.flag : flag specifico per il Comune di Milano - se abilitato imposta degli attributi specifici  //CDM
+     * - spid.createcompany.ws : se deve essere abilitata la creazione utente via WS
+     * specificare l'url del servizio
+     * - spid.createcompany.static.attribute: specifica una lista di attributi
+     * statici da popolare in creazione dell'utenza
+     * - spid.createcompany.create.cdm.attribute.flag : flag specifico per il Comune
+     * di Milano - se abilitato imposta degli attributi specifici //CDM
      * - spid.searchcompany.flag: se abilitato ricerca l'utente
-     * - spid.searchcompany.attribute: se abilitato il flag precedente specificare l'attributo per la ricerca di una company EX. cdmCodiceFiscaleDelegato=fiscalNumber;cdmPartitaIva=ivaCode;cdmTipoUtente=$5
-     * - spid.searchpiva.attribute: se abilitato il flag precedente specificare l'attributo per la ricerca utenti partita iva  EX. cdmPartitaIva=ivaCode
+     * - spid.searchcompany.attribute: se abilitato il flag precedente specificare
+     * l'attributo per la ricerca di una company EX.
+     * cdmCodiceFiscaleDelegato=fiscalNumber;cdmPartitaIva=ivaCode;cdmTipoUtente=$5
+     * - spid.searchpiva.attribute: se abilitato il flag precedente specificare
+     * l'attributo per la ricerca utenti partita iva EX. cdmPartitaIva=ivaCode
      * PER IDM
-     * - spid.createuser.idm.ws : se deve essere abilitata la creazione utente via WS IDM specificare l'url del servizio
+     * - spid.createuser.idm.ws : se deve essere abilitata la creazione utente via
+     * WS IDM specificare l'url del servizio
      * - spid.idm.ws.credential.user : utenza per chiamate rest IDM
      * - spid.idm.ws.credential.password : password per chiamate rest IDM
      */
@@ -75,21 +89,31 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
     private static final String GLOBAL_PROP_CREATEUSER_ATTRIBUTE = "spid.createcompany.static.attribute";
     private static final String GLOBAL_PROP_UPDATEUSER_ATTRIBUTE = "spid.updatecompany.static.attribute";
     private static final String GLOBAL_PROP_CREATEUSER_SETCDMATTR = "spid.createcompany.create.cdm.attribute.flag";
-    /* se impostato a true aggiorna lo stato utente ad Active ad ogni accesso SPID */
+    /*
+     * se impostato a true aggiorna lo stato utente ad Active ad ogni accesso SPID
+     */
     private static final String GLOBAL_PROP_UPDATEUSER_SETCDMSTATUS = "spid.updatecompany.enable.cdm.status.flag";
-    /* se impostato a true abilita la logica di aggiornamento utente ad ogni accesso SPID */
+    /*
+     * se impostato a true abilita la logica di aggiornamento utente ad ogni accesso
+     * SPID
+     */
     private static final String GLOBAL_PROP_UPDATEUSER_FLAG = "spid.updatecompany.enable.cdm.flag";
 
-    /* searchcompany attribute -> Innesca la ricerca e gestione di account SPID pregressi. La ricerca � in AND
-     * attrLDAP=attrAsserzione, oppure attrLDAP=$stringafissa (inserire il dollaro). Ad esempio cdmCodiceFiscale=fiscalNumber;cdmTipoUtente=$3 */
+    /*
+     * searchcompany attribute -> Innesca la ricerca e gestione di account SPID
+     * pregressi. La ricerca � in AND
+     * attrLDAP=attrAsserzione, oppure attrLDAP=$stringafissa (inserire il dollaro).
+     * Ad esempio cdmCodiceFiscale=fiscalNumber;cdmTipoUtente=$3
+     */
     private static final String GLOBAL_PROP_SEARCHUSER_ATTR = "spid.searchcompany.attribute";
 
-    private static final String GLOBAL_PROP_SEARCHPIVA_ATTR = "spid.searchpiva.attribute";  //Aggiunto per gestione partita iva
+    private static final String GLOBAL_PROP_SEARCHPIVA_ATTR = "spid.searchpiva.attribute"; // Aggiunto per gestione
+                                                                                           // partita iva
 
-    //Aggiunto per chiamate REST IDM
-    private static final String GLOBAL_PROP_CREATEIDMUSER_WS = "spid.createuser.idm.ws";  // "https://openidm.test.comune/openidm"
-    private static final String GLOBAL_PROP_IDMWS_USER = "spid.idm.ws.credential.user";   // "openidm-attributeMapper"
-    private static final String GLOBAL_PROP_IDMWS_PWD = "spid.idm.ws.credential.password";  // "password"
+    // Aggiunto per chiamate REST IDM
+    private static final String GLOBAL_PROP_CREATEIDMUSER_WS = "spid.createuser.idm.ws"; // "https://openidm.test.comune/openidm"
+    private static final String GLOBAL_PROP_IDMWS_USER = "spid.idm.ws.credential.user"; // "openidm-attributeMapper"
+    private static final String GLOBAL_PROP_IDMWS_PWD = "spid.idm.ws.credential.password"; // "password"
 
     private static Boolean createUserEnable = false;
     private static Boolean setCDMAttribute = false;
@@ -100,7 +124,6 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
 
     private static String searchUserAttr;
     private static String searchPivaAttr;
-
 
     private static Map<String, String> createUserAttr = new HashMap<String, String>();
     private static String userContainer = null;
@@ -115,14 +138,14 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
     CustomRepoUtil repoUtil = new CustomRepoUtil();
     CustomFederationUtil util = new CustomFederationUtil();
 
-    //private static String PWD_VAL = "NrskdJfx.4";
+    // private static String PWD_VAL = "NrskdJfx.4";
     private final static String PWD_ATTR = "userPassword";
     private final static String ENABLE_ATTR = "inetUserStatus";
 
     private static String stringUpdateUserAttr = new String();
 
     // CDM Attributi aggiunti per spid aziende company
-    //MODIFICA LOG SPID AZIENDE
+    // MODIFICA LOG SPID AZIENDE
     private final static String CDM_GIURIDICA_FISICA = "cdmGiuridicaFisica";
     private final static String CDM_CODICE_FISCALE = "cdmCodiceFiscale";
     private final static String CDM_EMAIL_DELEGATO_ATTR = "cdmEmailDelegato";
@@ -154,11 +177,12 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
     private final static String SPIDCODE_ATTR = "spidCode";
     private final static String DIGITALADDR_ATTR = "digitalAddress";
 
-    /*** Base URL e credenziali dove sono esposti i servizi rest IDM da richiamare ***/
+    /***
+     * Base URL e credenziali dove sono esposti i servizi rest IDM da richiamare
+     ***/
     private static String idmRestURL = null;
     private static String idmRestURL_pwd = null;
     private static String idmRestURL_admin = null;
-
 
     /**
      * Default constructor
@@ -169,7 +193,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
             debug = com.sun.identity.shared.debug.Debug.getInstance(DBGNAME);
         }
 
-        //get advanced properties
+        // get advanced properties
         String sEnableCreateFlag = SystemProperties.get(GLOBAL_PROP_CREATEUSER_ENABLE);
         if (sEnableCreateFlag == null || sEnableCreateFlag.trim().equals("")) {
             createUserEnable = false;
@@ -217,7 +241,9 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                 debug.message(GLOBAL_PROP_CREATEUSER_SETCDMATTR + " value: " + setCDMAttribute);
         }
 
-        /* se impostato a true aggiorna lo stato utente ad Active ad ogni accesso SPID */
+        /*
+         * se impostato a true aggiorna lo stato utente ad Active ad ogni accesso SPID
+         */
         String sUpdateCDMStatus = SystemProperties.get(GLOBAL_PROP_UPDATEUSER_SETCDMSTATUS);
         if (sUpdateCDMStatus == null || sUpdateCDMStatus.trim().equals("")) {
             updateCDMStatus = false;
@@ -229,7 +255,10 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                 debug.message(GLOBAL_PROP_UPDATEUSER_SETCDMSTATUS + " value: " + updateCDMStatus);
         }
 
-        /* se impostato a true abilita la logica di aggiornamento utente ad ogni accesso SPID */
+        /*
+         * se impostato a true abilita la logica di aggiornamento utente ad ogni accesso
+         * SPID
+         */
         String sUpdateCDMUser = SystemProperties.get(GLOBAL_PROP_UPDATEUSER_FLAG);
         if (sUpdateCDMUser == null || sUpdateCDMUser.trim().equals("")) {
             updateCDMUser = false;
@@ -268,7 +297,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                 debug.message(GLOBAL_PROP_CREATEUSER_WS + " value: " + createUserWs);
         }
 
-        /*** IDM  ***/
+        /*** IDM ***/
         idmRestURL = SystemProperties.get(GLOBAL_PROP_CREATEIDMUSER_WS);
         if (idmRestURL == null || idmRestURL.trim().equals("")) {
             if (debug.messageEnabled())
@@ -306,7 +335,6 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
         }
     }
 
-
     private void debugAdvancedPropertyVal() {
         String method = "[debugAdvancedPropertyVal]:: ";
 
@@ -326,12 +354,16 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
             /* CDM */
             debug.message(method + GLOBAL_PROP_CREATEUSER_SETCDMATTR + " value: " + setCDMAttribute);
 
-            /* se impostato a true aggiorna lo stato utente ad Active ad ogni accesso SPID */
+            /*
+             * se impostato a true aggiorna lo stato utente ad Active ad ogni accesso SPID
+             */
             debug.message(method + GLOBAL_PROP_UPDATEUSER_SETCDMSTATUS + " value: " + updateCDMStatus);
 
-            /* se impostato a true abilita la logica di aggiornamento utente ad ogni accesso SPID */
+            /*
+             * se impostato a true abilita la logica di aggiornamento utente ad ogni accesso
+             * SPID
+             */
             debug.message(method + GLOBAL_PROP_UPDATEUSER_FLAG + " value: " + updateCDMUser);
-
 
             if (searchUserAttr == null || searchUserAttr.trim().equals("")) {
                 debug.message(method + GLOBAL_PROP_SEARCHUSER_ATTR + " undefined.");
@@ -351,7 +383,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                 debug.message(method + GLOBAL_PROP_CREATEUSER_WS + " value: " + createUserWs);
             }
 
-            /*** IDM  ***/
+            /*** IDM ***/
             if (idmRestURL == null || idmRestURL.trim().equals("")) {
                 debug.message(method + GLOBAL_PROP_CREATEIDMUSER_WS + " undefined.");
             } else {
@@ -373,13 +405,12 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
         }
     }
 
-
     public static Map<String, List<String>> getAttributeMap(String hostEntityID, String realm) throws SAML2Exception {
         Map<String, List<String>> attributeMap = getConfigAttributeMap(realm, hostEntityID, SP);
         return attributeMap;
     }
 
-    @SuppressWarnings({"unused", "unchecked"})
+    @SuppressWarnings({ "unused", "unchecked" })
     public String getIdentity(Assertion assertion, String hostEntityID, String realm) throws SAML2Exception {
         String method = "[getIdentity]:: ";
 
@@ -395,7 +426,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
             throw new SAML2Exception(bundle.getString("nullRealm"));
         }
 
-        //stampa a debug tutte le variabili globali impostate
+        // stampa a debug tutte le variabili globali impostate
         debugAdvancedPropertyVal();
 
         Map<String, List<String>> map = getAttributeMap(hostEntityID, realm);
@@ -414,19 +445,20 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
         List<Attribute> attributes = null;
         List<AttributeStatement> attributeStatements = assertion.getAttributeStatements();
         if (attributeStatements != null) {
-            for (Iterator<AttributeStatement> attributeStatementsIterator = attributeStatements.iterator(); attributeStatementsIterator.hasNext(); ) {
+            for (Iterator<AttributeStatement> attributeStatementsIterator = attributeStatements
+                    .iterator(); attributeStatementsIterator.hasNext();) {
                 AttributeStatement attributeStatement = attributeStatementsIterator.next();
                 // Get Attributes
                 attributes = attributeStatement.getAttribute();
             }
         }
 
-
-        //MODIFICA LOG SPID AZIENDE
+        // MODIFICA LOG SPID AZIENDE
         if (debug.messageEnabled()) {
-            for (Iterator<Attribute> iter = attributes.iterator(); iter.hasNext(); ) {
+            for (Iterator<Attribute> iter = attributes.iterator(); iter.hasNext();) {
                 Attribute attribute = iter.next();
-                debug.message(method + " ATTRIBUTO ASSERTION ---> " + attribute.getName() + "// ATTRIBUTO ASSERTION VALUE ---> " + attribute.getAttributeValueString());
+                debug.message(method + " ATTRIBUTO ASSERTION ---> " + attribute.getName()
+                        + "// ATTRIBUTO ASSERTION VALUE ---> " + attribute.getAttributeValueString());
             }
         }
 
@@ -442,14 +474,15 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                         // substring del CF
                         List<String> autoFedAttrVal = (List<String>) util.getAttributeVal(attributes, autoFedAttr);
 
-                        //MODIFICA LOG SPID AZIENDE
+                        // MODIFICA LOG SPID AZIENDE
                         /**
-                         * Variabile per recuperare dagli attributi della SAML RESPONSE, il campo companyFiscalNumber per creare l'uid
+                         * Variabile per recuperare dagli attributi della SAML RESPONSE, il campo
+                         * companyFiscalNumber per creare l'uid
                          */
-                        List<String> autoFedAttrValCompany = (List<String>) util.getAttributeVal(attributes, "companyFiscalNumber");
+                        List<String> autoFedAttrValCompany = (List<String>) util.getAttributeVal(attributes,
+                                "companyFiscalNumber");
 
-
-                        //MODIFICA LOG SPID AZIENDE
+                        // MODIFICA LOG SPID AZIENDE
                         /**
                          * Formatting del campo codice fiscale
                          */
@@ -460,7 +493,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                                 userID = val;
                         }
 
-                        //MODIFICA LOG SPID AZIENDE
+                        // MODIFICA LOG SPID AZIENDE
                         /**
                          * Formatting del campo codice fiscale della company
                          */
@@ -502,7 +535,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
         }
 
         if (userID != null) {
-            //get user
+            // get user
             AMIdentity usrIdentity = null;
             List<AMIdentity> users = new ArrayList<AMIdentity>();
 
@@ -512,7 +545,8 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                 if (users.size() == 1) {
                     usrIdentity = users.get(0);
                 } else {
-                    SAML2Exception se = new SAML2Exception("Eccezione per name[" + userID + "] pi� di un utente con lo stesso codice fiscale");
+                    SAML2Exception se = new SAML2Exception(
+                            "Eccezione per name[" + userID + "] pi� di un utente con lo stesso codice fiscale");
                     throw se;
                 }
             }
@@ -522,14 +556,19 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                 // aggiornare l'utente per update password ed inetuserstatus=Active
                 if (setCDMAttribute) {
                     if (debug.messageEnabled())
-                        debug.message(method + "******* INIZIO Update Utente [" + usrIdentity.getName() + "] setCDMAttribute CDM ********");
+                        debug.message(method + "******* INIZIO Update Utente [" + usrIdentity.getName()
+                                + "] setCDMAttribute CDM ********");
 
                     try {
                         Map<String, List<?>> userAttrMap = new HashMap<String, List<?>>();
-                        /*** aggiunta parametrizzazione per discriminare se aggiornare lo stato utente o meno **/
+                        /***
+                         * aggiunta parametrizzazione per discriminare se aggiornare lo stato utente o
+                         * meno
+                         **/
                         if (updateCDMStatus) {
                             if (debug.messageEnabled())
-                                debug.message(method + "******* Update Utente [" + usrIdentity.getName() + "] inetuserstatus=Active ********");
+                                debug.message(method + "******* Update Utente [" + usrIdentity.getName()
+                                        + "] inetuserstatus=Active ********");
                             // inetuserstatus=Active
                             userAttrMap.put(ENABLE_ATTR, Arrays.asList("Active"));
                         }
@@ -538,43 +577,52 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                             String[] arrayAttributes = stringUpdateUserAttr.split(";");
                             for (String attr : arrayAttributes) {
                                 String[] arrayValue = attr.split("=");
-                                if (usrIdentity.getAttribute(arrayValue[0]) != null && !usrIdentity.getAttribute(arrayValue[0]).isEmpty()) {
-                                    if (!getAttrFromSet(usrIdentity.getAttribute(arrayValue[0])).equals(arrayValue[1])) {
+                                if (usrIdentity.getAttribute(arrayValue[0]) != null
+                                        && !usrIdentity.getAttribute(arrayValue[0]).isEmpty()) {
+                                    if (!getAttrFromSet(usrIdentity.getAttribute(arrayValue[0]))
+                                            .equals(arrayValue[1])) {
                                         userAttrMap.put(arrayValue[0], Arrays.asList(arrayValue[1]));
                                         if (debug.messageEnabled())
-                                            debug.message(method + "staticAttrName[" + arrayValue[0] + "] staticAttrVal[" + arrayValue[1] + "]");
+                                            debug.message(method + "staticAttrName[" + arrayValue[0]
+                                                    + "] staticAttrVal[" + arrayValue[1] + "]");
                                     }
                                 }
                             }
                         } else {
                             if (debug.messageEnabled())
-                                debug.message(method + GLOBAL_PROP_UPDATEUSER_ATTRIBUTE + " undefined: NO user Attribute default set");
+                                debug.message(method + GLOBAL_PROP_UPDATEUSER_ATTRIBUTE
+                                        + " undefined: NO user Attribute default set");
                         }
 
                         // password
                         userAttrMap.put(PWD_ATTR, Arrays.asList(setPassword()));
                         if (debug.messageEnabled())
-                            debug.message(method + "******* FINE Update Utente [" + usrIdentity.getName() + "] setCDMAttribute CDM ********");
+                            debug.message(method + "******* FINE Update Utente [" + usrIdentity.getName()
+                                    + "] setCDMAttribute CDM ********");
 
                         if (updateCDMUser) {
-                            //nuova logica di update
+                            // nuova logica di update
                             try {
                                 userAttrMap = setUpdateUserAttrMap(map, attributes, userID, userAttrMap);
                             } catch (ParseException e) {
                                 e.printStackTrace();
                             }
                             if (!updateSPIDUsers(usrIdentity, userAttrMap, map)) {
-                                debug.error(method + "Errore aggiornamento utente [" + usrIdentity.getName() + "]: errore chiamata Rest IDM");
-                                SAML2Exception se = new SAML2Exception("FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
+                                debug.error(method + "Errore aggiornamento utente [" + usrIdentity.getName()
+                                        + "]: errore chiamata Rest IDM");
+                                SAML2Exception se = new SAML2Exception(
+                                        "FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
                                 throw se;
                             } else {
                                 return userID;
                             }
                         } else {
-                            //vecchia gestione
+                            // vecchia gestione
                             if (!repoUtil.updateSpidUsers(usrIdentity, userAttrMap)) {
-                                debug.error(method + "FEDERATION_FAILED_WRITING_ACCOUNT [" + usrIdentity.getName() + "]: errore scrittura UserStore");
-                                SAML2Exception se = new SAML2Exception("FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
+                                debug.error(method + "FEDERATION_FAILED_WRITING_ACCOUNT [" + usrIdentity.getName()
+                                        + "]: errore scrittura UserStore");
+                                SAML2Exception se = new SAML2Exception(
+                                        "FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
                                 throw se;
                             } else {
                                 return userID;
@@ -582,21 +630,23 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                         }
                     } catch (SSOException | IdRepoException e) {
                         debug.error(method, e.getLocalizedMessage());
-                        debug.error(method + "FEDERATION_FAILED_WRITING_ACCOUNT [" + usrIdentity.getName() + "]: errore scrittura UserStore");
-                        SAML2Exception se = new SAML2Exception("FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
+                        debug.error(method + "FEDERATION_FAILED_WRITING_ACCOUNT [" + usrIdentity.getName()
+                                + "]: errore scrittura UserStore");
+                        SAML2Exception se = new SAML2Exception(
+                                "FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
                         throw se;
                     }
                 } else {
-                    //se l'utente esiste ritorna l'accountID
+                    // se l'utente esiste ritorna l'accountID
                     if (debug.messageEnabled())
-                        debug.message(method + "Utente [" + usrIdentity.getName() + "] aggiornato - Federazione completata");
+                        debug.message(
+                                method + "Utente [" + usrIdentity.getName() + "] aggiornato - Federazione completata");
                 }
-
 
                 return usrIdentity.getName();
 
             } else if (createUserEnable) {
-                //CREA L'UTENTE SPID SULLO USER STORE
+                // CREA L'UTENTE SPID SULLO USER STORE
                 if (debug.messageEnabled()) {
                     debug.message(method + "L'utente " + userID + " non risulta censito a sistema");
                     debug.message(method + "attributes [" + attributes + " ]");
@@ -604,16 +654,18 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
 
                 if (createUserWs != null) {
                     /** richiama un WS di creazione utenza che si occupa anche dello UserStore **/
-                    //TODO
+                    // TODO
                 } else {
                     /** crea l'utente sullo UserStore **/
                     Map<String, List<?>> attributeMap;
-                    //	******* crea l'utente sullo userStore ********
+                    // ******* crea l'utente sullo userStore ********
                     try {
                         attributeMap = setUserAttrMap(map, attributes, userID);
                         if (!repoUtil.addSpidUsers(userID, realm, null, userContainer, attributeMap)) {
-                            debug.error(method + " utente [" + userID + "] FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
-                            SAML2Exception se = new SAML2Exception("FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
+                            debug.error(method + " utente [" + userID
+                                    + "] FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
+                            SAML2Exception se = new SAML2Exception(
+                                    "FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
                             throw se;
                         } else {
                             debug.message(method + "Utente [" + userID + "] creato - Federazione completata");
@@ -621,8 +673,10 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                         }
                     } catch (SSOException | IdRepoException | ParseException e) {
                         debug.error(method, e.getLocalizedMessage());
-                        debug.error(method + " utente [" + userID + "] FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
-                        SAML2Exception se = new SAML2Exception("FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
+                        debug.error(method + " utente [" + userID
+                                + "] FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
+                        SAML2Exception se = new SAML2Exception(
+                                "FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
                         throw se;
                     }
                 }
@@ -632,7 +686,8 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
         return null;
     }
 
-    private Map<String, List<?>> setUserAttrMap(Map<String, List<String>> attributeMap, List<Attribute> attributes, String userID) throws ParseException {
+    private Map<String, List<?>> setUserAttrMap(Map<String, List<String>> attributeMap, List<Attribute> attributes,
+            String userID) throws ParseException {
         String method = "[setUserAttrMap]";
         if (debug.messageEnabled())
             debug.message(method + "inizio ... ");
@@ -641,79 +696,104 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
 
         if (debug.messageEnabled())
             debug.message(method + "******* INIZIO Iterator User [" + userID + "] - Attributi Asserzione ********");
-        for (Iterator<Attribute> iter = attributes.iterator(); iter.hasNext(); ) {
+        for (Iterator<Attribute> iter = attributes.iterator(); iter.hasNext();) {
             Attribute attribute = iter.next();
-//			DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            // DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
             if (attribute.getName() != null && attribute.getAttributeValueString() != null) {
-                //MODIFICA AGGIUNTA PER GESTIONE IDP POSTE - INIZIO
+                // MODIFICA AGGIUNTA PER GESTIONE IDP POSTE - INIZIO
                 if (getAttrAssertion(attribute.getAttributeValueString()) != null &&
                         !getAttrAssertion(attribute.getAttributeValueString()).equals("-")) {
-                    //MODIFICA AGGIUNTA PER GESTIONE IDP POSTE - FINE
+                    // MODIFICA AGGIUNTA PER GESTIONE IDP POSTE - FINE
 
                     // Aggiunto attributo cdmCodiceFiscale e cdmCodiceFiscaleDelegato
-                    if (attribute.getName().equalsIgnoreCase("fiscalNumber") && attribute.getAttributeValueString() != null) {
+                    if (attribute.getName().equalsIgnoreCase("fiscalNumber")
+                            && attribute.getAttributeValueString() != null) {
                         String codfisc = getAttrAssertion(attribute.getAttributeValueString());
                         if (codfisc != null && codfisc.length() >= TINSUFF.length()) {
                             userAttrMap.put(CDM_CODICE_FISCALE, Arrays.asList(codfisc.substring(TINSUFF.length())));
-                            userAttrMap.put(CDM_CODICE_FISCALE_DELEGATO, Arrays.asList(codfisc.substring(TINSUFF.length())));
+                            userAttrMap.put(CDM_CODICE_FISCALE_DELEGATO,
+                                    Arrays.asList(codfisc.substring(TINSUFF.length())));
 
                             if (debug.messageEnabled()) {
-                                debug.message(method + "Attr Assertion MAP - " + CDM_CODICE_FISCALE + ": " + codfisc.substring(TINSUFF.length()));
-                                debug.message(method + "Attr Assertion MAP - " + CDM_CODICE_FISCALE_DELEGATO + ": " + codfisc.substring(TINSUFF.length()));
+                                debug.message(method + "Attr Assertion MAP - " + CDM_CODICE_FISCALE + ": "
+                                        + codfisc.substring(TINSUFF.length()));
+                                debug.message(method + "Attr Assertion MAP - " + CDM_CODICE_FISCALE_DELEGATO + ": "
+                                        + codfisc.substring(TINSUFF.length()));
                             }
                         }
-/*					} else if (attribute.getName().equalsIgnoreCase("name")  && attribute.getAttributeValueString() != null){
-						userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
-					} else if (attribute.getName().equalsIgnoreCase("familyName")  && attribute.getAttributeValueString() != null){
-						userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
-					} else if (attribute.getName().equalsIgnoreCase("spidCode")  && attribute.getAttributeValueString() != null){
-						userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
-					} else if (attribute.getName().equalsIgnoreCase("gender")  && attribute.getAttributeValueString() != null){
-						userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
-					} else if (attribute.getName().equalsIgnoreCase("email")  && attribute.getAttributeValueString() != null){
-						userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
-					} else if (attribute.getName().equalsIgnoreCase("mobilePhone") && attribute.getAttributeValueString() != null){
-						userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
-					} else if (attribute.getName().equalsIgnoreCase("placeOfBirth") && attribute.getAttributeValueString() != null){
-						userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
-					} else if (attribute.getName().equalsIgnoreCase("digitalAddress") && attribute.getAttributeValueString() != null){
-						userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
-					} else if (attribute.getName().equalsIgnoreCase("companyName") && attribute.getAttributeValueString() != null){
-						userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
-					} else if (attribute.getName().equalsIgnoreCase("idCard") && attribute.getAttributeValueString() != null){
-						userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
-					} else if (attribute.getName().equalsIgnoreCase("address") && attribute.getAttributeValueString() != null){
-						userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
-					} else if (attribute.getName().equalsIgnoreCase("registeredOffice") && attribute.getAttributeValueString() != null){
-						userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
-					} else if (attribute.getName().equalsIgnoreCase("dateOfBirth") && attribute.getAttributeValueString() != null){
-						if (debug.messageEnabled())
-							debug.message(method + " -- (dataNascDate): " + attribute.getAttributeValueString() );
-						Date dataNascDate = dateFormat.parse(getAttrAssertion(attribute.getAttributeValueString()));
-						if (debug.messageEnabled())
-							debug.message(method + " -- (dataNascDate): " + dataNascDate );
-						String pattern = "yyyyMMdd000000";
-						SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
-						if (debug.messageEnabled())
-							debug.message(method + "simpleDateFormat.format(dataNascDate): " + simpleDateFormat.format(dataNascDate));
-						userAttrMap.put(getCorrAttrLDAP(attributeMap, attribute.getName()), Arrays.asList( simpleDateFormat.format(dataNascDate) ));
- 						*/
+                        /*
+                         * } else if (attribute.getName().equalsIgnoreCase("name") &&
+                         * attribute.getAttributeValueString() != null){
+                         * userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
+                         * } else if (attribute.getName().equalsIgnoreCase("familyName") &&
+                         * attribute.getAttributeValueString() != null){
+                         * userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
+                         * } else if (attribute.getName().equalsIgnoreCase("spidCode") &&
+                         * attribute.getAttributeValueString() != null){
+                         * userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
+                         * } else if (attribute.getName().equalsIgnoreCase("gender") &&
+                         * attribute.getAttributeValueString() != null){
+                         * userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
+                         * } else if (attribute.getName().equalsIgnoreCase("email") &&
+                         * attribute.getAttributeValueString() != null){
+                         * userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
+                         * } else if (attribute.getName().equalsIgnoreCase("mobilePhone") &&
+                         * attribute.getAttributeValueString() != null){
+                         * userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
+                         * } else if (attribute.getName().equalsIgnoreCase("placeOfBirth") &&
+                         * attribute.getAttributeValueString() != null){
+                         * userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
+                         * } else if (attribute.getName().equalsIgnoreCase("digitalAddress") &&
+                         * attribute.getAttributeValueString() != null){
+                         * userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
+                         * } else if (attribute.getName().equalsIgnoreCase("companyName") &&
+                         * attribute.getAttributeValueString() != null){
+                         * userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
+                         * } else if (attribute.getName().equalsIgnoreCase("idCard") &&
+                         * attribute.getAttributeValueString() != null){
+                         * userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
+                         * } else if (attribute.getName().equalsIgnoreCase("address") &&
+                         * attribute.getAttributeValueString() != null){
+                         * userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
+                         * } else if (attribute.getName().equalsIgnoreCase("registeredOffice") &&
+                         * attribute.getAttributeValueString() != null){
+                         * userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
+                         * } else if (attribute.getName().equalsIgnoreCase("dateOfBirth") &&
+                         * attribute.getAttributeValueString() != null){
+                         * if (debug.messageEnabled())
+                         * debug.message(method + " -- (dataNascDate): " +
+                         * attribute.getAttributeValueString() );
+                         * Date dataNascDate =
+                         * dateFormat.parse(getAttrAssertion(attribute.getAttributeValueString()));
+                         * if (debug.messageEnabled())
+                         * debug.message(method + " -- (dataNascDate): " + dataNascDate );
+                         * String pattern = "yyyyMMdd000000";
+                         * SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+                         * if (debug.messageEnabled())
+                         * debug.message(method + "simpleDateFormat.format(dataNascDate): " +
+                         * simpleDateFormat.format(dataNascDate));
+                         * userAttrMap.put(getCorrAttrLDAP(attributeMap, attribute.getName()),
+                         * Arrays.asList( simpleDateFormat.format(dataNascDate) ));
+                         */
 
                         // Aggiunto attributo cdmDomicilioDigitale
-                    }else if(attribute.getName().equalsIgnoreCase("digitalAddress") && attribute.getAttributeValueString() != null){
-                            String digitalAddress = getAttrAssertion(util.getAttributeVal(attributes, "digitalAddress"));
-                            if (debug.messageEnabled())
-                                debug.message(method + " -- (" + CDM_DOMICILIO_DIGITALE + "): " + digitalAddress);
+                    } else if (attribute.getName().equalsIgnoreCase("digitalAddress")
+                            && attribute.getAttributeValueString() != null) {
+                        String digitalAddress = getAttrAssertion(util.getAttributeVal(attributes, "digitalAddress"));
+                        if (debug.messageEnabled())
+                            debug.message(method + " -- (" + CDM_DOMICILIO_DIGITALE + "): " + digitalAddress);
 
-                            userAttrMap.put(CDM_DOMICILIO_DIGITALE, Arrays.asList(digitalAddress));
+                        userAttrMap.put(CDM_DOMICILIO_DIGITALE, Arrays.asList(digitalAddress));
 
                         // Aggiunto attributo ivaCode
-                    } else if (attribute.getName().equalsIgnoreCase("ivaCode") && attribute.getAttributeValueString() != null) {
-                        //					utentePortaleSpid.setIvaCode(getAttrAssertion(attribute.getAttributeValueString()));
-                        //Per gestire "VATIT-partitaiva"
+                    } else if (attribute.getName().equalsIgnoreCase("ivaCode")
+                            && attribute.getAttributeValueString() != null) {
+                        // utentePortaleSpid.setIvaCode(getAttrAssertion(attribute.getAttributeValueString()));
+                        // Per gestire "VATIT-partitaiva"
                         String ivaCode = getAttrAssertion(attribute.getAttributeValueString());
                         if (ivaCode != null && ivaCode.length() >= VATSUFF.length())
-                            userAttrMap.put(getCorrAttrLDAP(attributeMap, attribute.getName()), Arrays.asList(ivaCode.substring(VATSUFF.length())));
+                            userAttrMap.put(getCorrAttrLDAP(attributeMap, attribute.getName()),
+                                    Arrays.asList(ivaCode.substring(VATSUFF.length())));
 
                     }
 
@@ -721,25 +801,30 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                     /**
                      * Logica per eliminare il suffisso TINIT- alla companyFiscalNumber
                      */
-                    else if (attribute.getName().equalsIgnoreCase("companyFiscalNumber") && attribute.getAttributeValueString() != null) {
+                    else if (attribute.getName().equalsIgnoreCase("companyFiscalNumber")
+                            && attribute.getAttributeValueString() != null) {
                         String ivaCodeSpidAziende = getAttrAssertion(attribute.getAttributeValueString());
                         if (ivaCodeSpidAziende != null && ivaCodeSpidAziende.length() >= TINSUFF.length())
-                            userAttrMap.put(CDM_COMPANY_FISCAL_NUMBER_ATTRNAME, Arrays.asList(ivaCodeSpidAziende.substring(TINSUFF.length())));
+                            userAttrMap.put(CDM_COMPANY_FISCAL_NUMBER_ATTRNAME,
+                                    Arrays.asList(ivaCodeSpidAziende.substring(TINSUFF.length())));
 
                         if (debug.messageEnabled())
-                            debug.message(method + "Attr Assertion MAP - " + CDM_COMPANY_FISCAL_NUMBER_ATTRNAME + " : " + ivaCodeSpidAziende.substring(TINSUFF.length()));
+                            debug.message(method + "Attr Assertion MAP - " + CDM_COMPANY_FISCAL_NUMBER_ATTRNAME + " : "
+                                    + ivaCodeSpidAziende.substring(TINSUFF.length()));
                     } else {
-//						userAttrMap.put( getCorrAttrLDAP(attributeMap, attribute.getName()), Arrays.asList( attribute.getAttributeValueString()) );
+                        // userAttrMap.put( getCorrAttrLDAP(attributeMap, attribute.getName()),
+                        // Arrays.asList( attribute.getAttributeValueString()) );
                         List<String> lAttrLDAP = getAllCorrAttrLDAP(attributeMap, attribute.getName());
-//						String attrLDAP = getCorrAttrLDAP(attributeMap, attribute.getName());
+                        // String attrLDAP = getCorrAttrLDAP(attributeMap, attribute.getName());
                         String attrLDAPVal = getAttrAssertion(attribute.getAttributeValueString());
                         for (String attrLDAP : lAttrLDAP) {
                             if (debug.messageEnabled())
-                                debug.message(method + "Generic Attr Assertion MAP - " + attrLDAP + " : " + attrLDAPVal);
+                                debug.message(
+                                        method + "Generic Attr Assertion MAP - " + attrLDAP + " : " + attrLDAPVal);
                             userAttrMap.put(attrLDAP, Arrays.asList(attrLDAPVal));
                         }
                     }
-                }//MODIFICA AGGIUNTA PER GESTIONE IDP POSTE
+                } // MODIFICA AGGIUNTA PER GESTIONE IDP POSTE
             }
         }
         if (debug.messageEnabled())
@@ -758,7 +843,8 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
 
             // Aggiunto attributo cdmGiuridicaFisica
             /**
-             * Abbiamo levato il controllo per il campo perchè la classe è innescata quando l'accesso è sempre fatto da una company
+             * Abbiamo levato il controllo per il campo perchè la classe è innescata quando
+             * l'accesso è sempre fatto da una company
              * quindi avrà sempre come valore la "G"
              */
             userAttrMap.put(CDM_GIURIDICA_FISICA, Arrays.asList("G"));
@@ -786,31 +872,35 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                 }
             }
 
-            // Aggiunto attributo cdmRegisteredOffice,cdmSedeCAP,cdmSedeProvincia,cdmSedeVia,cdmSedeComune
+            // Aggiunto attributo
+            // cdmRegisteredOffice,cdmSedeCAP,cdmSedeProvincia,cdmSedeVia,cdmSedeComune
             /**
              * Gestione del campo cdmRegisteredOffice
              */
             if (getAttrAssertion(util.getAttributeVal(attributes, "registeredOffice")) != null) {
 
                 if (debug.messageEnabled())
-                    debug.message(method + "registeredOffice ---> " + getAttrAssertion(util.getAttributeVal(attributes, "registeredOffice")));
+                    debug.message(method + "registeredOffice ---> "
+                            + getAttrAssertion(util.getAttributeVal(attributes, "registeredOffice")));
 
                 try {
                     String sAddress = getAttrAssertion(util.getAttributeVal(attributes, "registeredOffice"));
 
                     userAttrMap.put(CDM_REGISTERED_OFFICE, Arrays.asList(sAddress));
 
-                    // Metodo per scompattare il campo dell'assertio registeredOffice e inserirlo nei campi del LDAP
+                    // Metodo per scompattare il campo dell'assertio registeredOffice e inserirlo
+                    // nei campi del LDAP
                     Map<String, String> mAddress = getAddressElementOffice(sAddress);
 
                     if (mAddress != null && mAddress.size() > 0) {
                         if (debug.messageEnabled()) {
-                            debug.message(method + "Valorizzo i campi cdmSedeCAP,cdmSedeProvincia,cdmSedeVia,cdmSedeComune");
+                            debug.message(
+                                    method + "Valorizzo i campi cdmSedeCAP,cdmSedeProvincia,cdmSedeVia,cdmSedeComune");
                         }
-                            userAttrMap.put(CDM_SEDE_CAP, Arrays.asList(mAddress.get("cdmSedeCAP")));
-                            userAttrMap.put(CDM_SEDE_PROVINCIA, Arrays.asList(mAddress.get("cdmSedeProvincia")));
-                            userAttrMap.put(CDM_SEDE_VIA, Arrays.asList(mAddress.get("cdmSedeVia")));
-                            userAttrMap.put(CDM_SEDE_COMUNE, Arrays.asList(mAddress.get("cdmSedeComune")));
+                        userAttrMap.put(CDM_SEDE_CAP, Arrays.asList(mAddress.get("cdmSedeCAP")));
+                        userAttrMap.put(CDM_SEDE_PROVINCIA, Arrays.asList(mAddress.get("cdmSedeProvincia")));
+                        userAttrMap.put(CDM_SEDE_VIA, Arrays.asList(mAddress.get("cdmSedeVia")));
+                        userAttrMap.put(CDM_SEDE_COMUNE, Arrays.asList(mAddress.get("cdmSedeComune")));
                     }
                 } catch (IndexOutOfBoundsException ex) {
                     debug.error(method, ex.getLocalizedMessage());
@@ -826,8 +916,10 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                     debug.message(method + " -- (sdataNascDate): " + sdataNascDate);
                 Date dataNascDate = dateFormat.parse(sdataNascDate);
 
-                userAttrMap.put(CDM_NASCITA_DATA_OLD, Arrays.asList(new SimpleDateFormat("yyyy-MM-dd").format(dataNascDate)));
-                userAttrMap.put(CDM_NASCITA_DATA, Arrays.asList(new SimpleDateFormat("yyyyMMdd000000").format(dataNascDate)));
+                userAttrMap.put(CDM_NASCITA_DATA_OLD,
+                        Arrays.asList(new SimpleDateFormat("yyyy-MM-dd").format(dataNascDate)));
+                userAttrMap.put(CDM_NASCITA_DATA,
+                        Arrays.asList(new SimpleDateFormat("yyyyMMdd000000").format(dataNascDate)));
             }
 
             // aggiunto attributo SPIDemail, cdmEmailDelegato, mail
@@ -835,11 +927,11 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                     !getAttrAssertion(util.getAttributeVal(attributes, "email")).isEmpty()) {
                 String sSpidEmail = getAttrAssertion(util.getAttributeVal(attributes, "email"));
                 String sSpidAziendeEmail = getAttrAssertion(util.getAttributeVal(attributes, "email"));
-                String mail = getAttrAssertion(util.getAttributeVal(attributes,"email"));
-                if (debug.messageEnabled()){
+                String mail = getAttrAssertion(util.getAttributeVal(attributes, "email"));
+                if (debug.messageEnabled()) {
                     debug.message(method + " -- (" + CDM_MAIL_ATTR + "): " + sSpidEmail);
                     debug.message(method + " -- (" + CDM_EMAIL_DELEGATO_ATTR + "): " + sSpidAziendeEmail);
-                    debug.message(method + " -- (" + CDM_COMPANY_MAIL+ "): " + mail);
+                    debug.message(method + " -- (" + CDM_COMPANY_MAIL + "): " + mail);
                 }
 
                 userAttrMap.put(CDM_MAIL_ATTR, Arrays.asList(sSpidEmail));
@@ -852,7 +944,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                     !getAttrAssertion(util.getAttributeVal(attributes, "mobilePhone")).isEmpty()) {
                 String sSpidAziendeMobile = getAttrAssertion(util.getAttributeVal(attributes, "mobilePhone"));
                 String sSpidMobile = getAttrAssertion(util.getAttributeVal(attributes, "mobilePhone"));
-                String mobile = getAttrAssertion(util.getAttributeVal(attributes,"mobilePhone"));
+                String mobile = getAttrAssertion(util.getAttributeVal(attributes, "mobilePhone"));
                 if (debug.messageEnabled()) {
                     debug.message(method + " -- (" + CDM_MOBILE_PHONE_DELEGATO_ATTR + "): " + sSpidAziendeMobile);
                     debug.message(method + " -- (" + CDM_MOBILE_ATTR + "): " + sSpidMobile);
@@ -872,7 +964,8 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
 
         if (createUserAttr != null && !createUserAttr.isEmpty()) {
             if (debug.messageEnabled())
-                debug.message(method + "******* INIZIO setCDMAttribute User [" + userID + "] - Attributi Statici ********");
+                debug.message(
+                        method + "******* INIZIO setCDMAttribute User [" + userID + "] - Attributi Statici ********");
             // se esistono attributi di default li imposta
             for (Map.Entry<String, String> entry : createUserAttr.entrySet()) {
                 String defaultAttr = entry.getKey();
@@ -882,11 +975,13 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                 userAttrMap.put(defaultAttr, Arrays.asList(defaultAttrVal));
             }
             if (debug.messageEnabled())
-                debug.message(method + "******* FINE setCDMAttribute User [" + userID + "] - Attributi Statici ********");
+                debug.message(
+                        method + "******* FINE setCDMAttribute User [" + userID + "] - Attributi Statici ********");
         }
 
         if (debug.messageEnabled()) {
-            debug.message(method + "******* Stampa degli attributi dell'utente [" + userID + "] da memorizzare ********");
+            debug.message(
+                    method + "******* Stampa degli attributi dell'utente [" + userID + "] da memorizzare ********");
 
             for (Entry<String, List<String>> entry : attributeMap.entrySet()) {
                 String keyName = entry.getKey();
@@ -902,10 +997,11 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
      * Utility per split dell'indirizzo da Asserzione
      * sElement: elemento da recuperare
      * return Map: mapper con gli elementi splittati,
-     * 				Key: postalCode - codice postale
-     * 				Key: street - indirizzo
-     * 				Key: st - provincia
-     * 				Key: default - se non possibile ritorna address con il valore originale dell'asserzione
+     * Key: postalCode - codice postale
+     * Key: street - indirizzo
+     * Key: st - provincia
+     * Key: default - se non possibile ritorna address con il valore originale
+     * dell'asserzione
      */
     private static Map<String, String> getAddressElement(String sAddress) {
         String method = "getAddressElement::";
@@ -913,13 +1009,12 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
             debug.message(method + "--------  Address: " + sAddress + " ------------");
         Map<String, String> mAddress = new ArrayMap<>();
 
-
         if (sAddress != null && !sAddress.isEmpty() && !sAddress.equalsIgnoreCase("null")) {
 
             try {
                 String sSplitAddress = sAddress.replace("/", "");
 
-                //aggiunta gestione senza numero civico
+                // aggiunta gestione senza numero civico
                 if (getFirstNumber(sSplitAddress) != null) {
 
                     if (getPostalCode(sSplitAddress) != null) {
@@ -942,7 +1037,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                 debug.error(method + ex.getLocalizedMessage());
             }
         }
-        mAddress.put("default", sAddress);  //se non si riesce a prasare ritorna la stringa originale
+        mAddress.put("default", sAddress); // se non si riesce a prasare ritorna la stringa originale
         return mAddress;
     }
 
@@ -950,11 +1045,11 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
      * Utility per split dell'indirizzo da Asserzione
      * sElement: elemento da recuperare
      * return Map: mapper con gli elementi splittati,
-     *              Key: cdmSedeComune - comune
-     * 				Key: cdmSedeCAP - codice postale
-     * 				Key: cdmSedeVia - indirizzo
-     * 				Key: cdmSedeProvincia - provincia
-     * 				Key: cdmSedeComune - comune
+     * Key: cdmSedeComune - comune
+     * Key: cdmSedeCAP - codice postale
+     * Key: cdmSedeVia - indirizzo
+     * Key: cdmSedeProvincia - provincia
+     * Key: cdmSedeComune - comune
      */
     private static Map<String, String> getAddressElementOffice(String sAddress) {
         String method = "getAddressElementOffice::";
@@ -964,8 +1059,8 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
         if (sAddress != null && !sAddress.isEmpty() && !sAddress.equalsIgnoreCase("null")) {
 
             try {
-                String addressReplace =  sAddress.replace(" ", "/");
-                debug.message(method+"INDIRIZZO ---> " + addressReplace);
+                String addressReplace = sAddress.replace(" ", "/");
+                debug.message(method + "INDIRIZZO ---> " + addressReplace);
                 String sSplitAddress = sAddress.replace("/", "");
                 String[] sListAddress = addressReplace.split("/");
 
@@ -980,7 +1075,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
 
                         int position = sListAddress.length - 2;
 
-                        for(int i = 0; i < sListAddress.length; i++){
+                        for (int i = 0; i < sListAddress.length; i++) {
                             debug.message(sListAddress[i]);
                         }
 
@@ -1002,7 +1097,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                 debug.error(method + ex.getLocalizedMessage());
             }
         }
-        mAddress.put("default", sAddress);  //se non si riesce a prasare ritorna la stringa originale
+        mAddress.put("default", sAddress); // se non si riesce a prasare ritorna la stringa originale
         return mAddress;
     }
 
@@ -1010,7 +1105,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
      * Utility per impostazione password
      */
     private String setPassword() {
-        //imposta la password
+        // imposta la password
         String randomPwd = "";
         String[] chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
         for (int alpha = 4; alpha > 0; alpha--) {
@@ -1044,7 +1139,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
     }
 
     private static String getPostalCode(String stringa) {
-//		String method = "getPostalCode:: ";
+        // String method = "getPostalCode:: ";
         Matcher m = Pattern.compile("[0-9]{5}").matcher(stringa);
         while (m.find()) {
             return m.group().toString();
@@ -1064,12 +1159,13 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
     }
 
     /*
-     * Partendo dal nome dell'attributo dell'asserzione recupera l'attributo ldap corrispondente
+     * Partendo dal nome dell'attributo dell'asserzione recupera l'attributo ldap
+     * corrispondente
      *
      */
     private String getCorrAttrLDAP(Map<String, List<String>> attributeMap, String assertionAttrName) {
-		String method = "[getCorrAttrLDAP]";
-        //mappa gli attributi LDAP con quelli dell'asserzione
+        String method = "[getCorrAttrLDAP]";
+        // mappa gli attributi LDAP con quelli dell'asserzione
         for (Entry<String, List<String>> entry : attributeMap.entrySet()) {
             String assertionAttr = entry.getKey();
             List<String> luserAttr = entry.getValue();
@@ -1084,12 +1180,13 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
     }
 
     /*
-     * Partendo dal nome dell'attributo dell'asserzione recupera l'attributo ldap corrispondente
+     * Partendo dal nome dell'attributo dell'asserzione recupera l'attributo ldap
+     * corrispondente
      *
      */
     private List<String> getAllCorrAttrLDAP(Map<String, List<String>> attributeMap, String assertionAttrName) {
         String method = "[getAllCorrAttrLDAP]";
-        //mappa gli attributi LDAP con quelli dell'asserzione
+        // mappa gli attributi LDAP con quelli dell'asserzione
         for (Entry<String, List<String>> entry : attributeMap.entrySet()) {
             String assertionAttr = entry.getKey();
             List<String> luserAttr = entry.getValue();
@@ -1101,10 +1198,10 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
         return null;
     }
 
-    @SuppressWarnings({"unused"})
+    @SuppressWarnings({ "unused" })
     private String getUserFromAssertion(List<Attribute> attrMapAssertion) {
         String method = "[getUserFromAssertion]";
-        for (Iterator<Attribute> iter = attrMapAssertion.iterator(); iter.hasNext(); ) {
+        for (Iterator<Attribute> iter = attrMapAssertion.iterator(); iter.hasNext();) {
             Attribute attribute = iter.next();
             if (attribute.getName() != null && attribute.getAttributeValueString() != null) {
 
@@ -1145,7 +1242,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
      *
      * @param realm realm to check the dynamical profile creation attributes.
      * @return true if dynamical profile creation or ignore profile is enabled,
-     * false otherwise.
+     *         false otherwise.
      */
     protected boolean isDynamicalOrIgnoredProfile(String realm) {
 
@@ -1159,12 +1256,12 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
      * @param realm        realm name.
      * @param hostEntityID <code>EntityID</code> of the hosted provider.
      * @return a map of local attributes configuration map.
-     * This map will have a key as the SAML attribute name and the value
-     * is the local attribute.
+     *         This map will have a key as the SAML attribute name and the value
+     *         is the local attribute.
      * @throws <code>SAML2Exception</code> if any failured.
      */
     public static Map<String, List<String>> getConfigAttributeMap(String realm, String hostEntityID,
-                                                                  String role) throws SAML2Exception {
+            String role) throws SAML2Exception {
         String method = "[getConfigAttributeMap]:: ";
 
         if (realm == null) {
@@ -1207,8 +1304,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                 attribConfig = SAML2MetaUtils.getAttributes(IDPSSOconfig);
             }
 
-            List<?> mappedAttributes =
-                    (List<?>) attribConfig.get(SAML2Constants.ATTRIBUTE_MAP);
+            List<?> mappedAttributes = (List<?>) attribConfig.get(SAML2Constants.ATTRIBUTE_MAP);
 
             if ((mappedAttributes == null) || (mappedAttributes.size() == 0)) {
                 if (debug.messageEnabled()) {
@@ -1220,7 +1316,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
             }
             Map<String, List<String>> map = new HashMap<String, List<String>>();
 
-            for (Iterator<?> iter = mappedAttributes.iterator(); iter.hasNext(); ) {
+            for (Iterator<?> iter = mappedAttributes.iterator(); iter.hasNext();) {
                 String entry = (String) iter.next();
 
                 if (entry.indexOf("=") == -1) {
@@ -1251,7 +1347,8 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
     }
 
     /**
-     * NOTA: In caso di aggiunta di un attributo LDAP da modificare ricordarsi di aggiungere il mapping IDM
+     * NOTA: In caso di aggiunta di un attributo LDAP da modificare ricordarsi di
+     * aggiungere il mapping IDM
      *
      * @param usrIdentity
      * @param attributeMap Attributi da aggiornare
@@ -1259,16 +1356,17 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
      * @throws IdRepoException
      * @throws SSOException
      */
-    private boolean updateSPIDUsers(AMIdentity usrIdentity, Map<String, List<?>> attributeMap, Map<String, List<String>> attributeSPIDMap)
+    private boolean updateSPIDUsers(AMIdentity usrIdentity, Map<String, List<?>> attributeMap,
+            Map<String, List<String>> attributeSPIDMap)
             throws IdRepoException, SSOException {
         String method = "[updateSPIDUsers]:: ";
         if (debug.messageEnabled()) {
             debug.message(method + "parametri: usrIdentity[" + usrIdentity + "]");
-			debug.message(method + "attributeMap [" + attributeMap + " ]");
+            debug.message(method + "attributeMap [" + attributeMap + " ]");
         }
 
         try {
-            //aggiorna l'utente
+            // aggiorna l'utente
             if (debug.messageEnabled())
                 debug.message(method + "inizio update utente SPID [" + usrIdentity.getName() + "]... ");
 
@@ -1280,24 +1378,27 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
             if (attributeMap != null && !attributeMap.isEmpty()) {
                 Map<String, Set<String>> attrs = new HashMap<String, Set<String>>();
                 Set<String> vals = new HashSet<String>();
-                /* modifica del default da false a true - quindi non va aggiornato solo nel caso in cui il sipoupdate � a true */
-//				boolean updateAddress = false;
+                /*
+                 * modifica del default da false a true - quindi non va aggiornato solo nel caso
+                 * in cui il sipoupdate � a true
+                 */
+                // boolean updateAddress = false;
                 boolean updateAddress = true;
                 boolean updateIDMUser = false;
 
                 if (usrIdentity.getAttribute(CDM_SIPO_UPDATE) != null) {
                     Set<String> actualAttrVal = usrIdentity.getAttribute(CDM_SIPO_UPDATE);
                     for (String valore : actualAttrVal) {
-//						if( valore.equalsIgnoreCase("false") ) {
-//							updateAddress = true;
-//						}
+                        // if( valore.equalsIgnoreCase("false") ) {
+                        // updateAddress = true;
+                        // }
                         if (valore.equalsIgnoreCase("true")) {
                             updateAddress = false;
                         }
                     }
                 }
 
-                //prende l'attuale valore dell'email censito
+                // prende l'attuale valore dell'email censito
                 if (usrIdentity.getAttribute(sDefaultEmail) != null) {
                     Set<String> actualAttrVal = usrIdentity.getAttribute(sDefaultEmail);
                     for (String valore : actualAttrVal) {
@@ -1305,7 +1406,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                     }
                 }
 
-                //prende l'attuale valore del mobile censito
+                // prende l'attuale valore del mobile censito
                 if (usrIdentity.getAttribute(sDefaultMobile) != null) {
                     Set<String> actualAttrVal = usrIdentity.getAttribute(sDefaultMobile);
                     for (String valore : actualAttrVal) {
@@ -1313,12 +1414,13 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                     }
                 }
 
-                //attributi LDAP da aggiornare con i valori del SAML
+                // attributi LDAP da aggiornare con i valori del SAML
                 for (Entry<String, List<?>> entry : attributeMap.entrySet()) {
-                    String userAttr = entry.getKey();  //attributo LDAP
-                    Set<String> actualAttrVal = usrIdentity.getAttribute(userAttr);  //valore attuale dell'attributo LDAP
+                    String userAttr = entry.getKey(); // attributo LDAP
+                    Set<String> actualAttrVal = usrIdentity.getAttribute(userAttr); // valore attuale dell'attributo
+                                                                                    // LDAP
                     if (entry.getValue() != null) {
-                        //valore del SAML da impostare
+                        // valore del SAML da impostare
                         vals = new HashSet<String>();
                         Object[] userVals = entry.getValue().toArray();
                         String sVals = userVals[0].toString();
@@ -1328,8 +1430,10 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                         }
 
                         // Check per i campi ldap l,cdmResidenzaCodiceNazione,street,st,postalCode
-                        if (userAttr.equalsIgnoreCase(CDM_L) || userAttr.equalsIgnoreCase(CDM_RESIDENZA_CODICE_NAZIONE) || userAttr.equalsIgnoreCase(CDM_STREET) || userAttr.equalsIgnoreCase(CDM_ST) || userAttr.equalsIgnoreCase(CDM_POSTAL_CODE)) {
-                            /* se cdmSIPOUpdated = false  -> modificare anche address */
+                        if (userAttr.equalsIgnoreCase(CDM_L) || userAttr.equalsIgnoreCase(CDM_RESIDENZA_CODICE_NAZIONE)
+                                || userAttr.equalsIgnoreCase(CDM_STREET) || userAttr.equalsIgnoreCase(CDM_ST)
+                                || userAttr.equalsIgnoreCase(CDM_POSTAL_CODE)) {
+                            /* se cdmSIPOUpdated = false -> modificare anche address */
                             if (updateAddress) {
                                 if (debug.messageEnabled())
                                     debug.message(method + "updateAddress TRUE");
@@ -1337,10 +1441,11 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                                     for (String valore : actualAttrVal) {
                                         if (!valore.equals(sVals)) {
                                             updateIDMUser = true;
-                                            //se sono diversi imposta l'attributo
+                                            // se sono diversi imposta l'attributo
                                             attrs.put(userAttr, vals);
                                             if (debug.messageEnabled())
-                                                debug.message(method + "userAttr[" + userAttr + "] actualAttrVal: " + actualAttrVal.toString()
+                                                debug.message(method + "userAttr[" + userAttr + "] actualAttrVal: "
+                                                        + actualAttrVal.toString()
                                                         + " vals[ " + vals + "]");
                                         }
                                     }
@@ -1353,12 +1458,16 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                                 }
                             }
                         } else {
-                            //Per attributi diversi da Address ...
-                            if (actualAttrVal != null && !actualAttrVal.isEmpty()) { //se il valore attuale dell'attributo non � null
+                            // Per attributi diversi da Address ...
+                            if (actualAttrVal != null && !actualAttrVal.isEmpty()) { // se il valore attuale
+                                                                                     // dell'attributo non � null
 
                                 for (String actualVal : actualAttrVal) {
 
-                                    /* In caso di variazione, dovr� essere propagato in HTTP header insieme al relativo flag di controllo ( spidmobilechanged ) */
+                                    /*
+                                     * In caso di variazione, dovr� essere propagato in HTTP header insieme al
+                                     * relativo flag di controllo ( spidmobilechanged )
+                                     */
                                     // Check per i campi ldap Spidmobile
                                     if (userAttr.equalsIgnoreCase(CDM_MOBILE_ATTR)) {
                                         if (sActualValueMobile != null) {
@@ -1366,13 +1475,15 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                                             if (!actualVal.equalsIgnoreCase(sVals)) {
                                                 updateIDMUser = true;
                                                 if (debug.messageEnabled())
-                                                    debug.message(method + " updateIDMUser - sVals: " + sVals + " actualAttrVal: " + actualVal);
+                                                    debug.message(method + " updateIDMUser - sVals: " + sVals
+                                                            + " actualAttrVal: " + actualVal);
                                             }
                                         } else {
-                                            //se l'attuale mobile dell'utente è null il valore viene impostato
+                                            // se l'attuale mobile dell'utente è null il valore viene impostato
                                             attrs.put(CDM_MOBILE_ATTR, vals);
                                             if (debug.messageEnabled()) {
-                                                debug.message(method + "set[" + CDM_MOBILE_ATTR + "] valore Attributo sActualValueMobile NULL ... ");
+                                                debug.message(method + "set[" + CDM_MOBILE_ATTR
+                                                        + "] valore Attributo sActualValueMobile NULL ... ");
                                             }
                                         }
 
@@ -1380,31 +1491,36 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                                     } else if (userAttr.equalsIgnoreCase(CDM_MAIL_ATTR)) {
 
                                         if (sActualValueEmail != null) {
-                                            //se sono diversi o l'email attuale o la mail SPID imposta l'attributo SPID_MOBILE_ATTR ed il relativo flag
+                                            // se sono diversi o l'email attuale o la mail SPID imposta l'attributo
+                                            // SPID_MOBILE_ATTR ed il relativo flag
                                             attrs.put(CDM_MAIL_ATTR, vals);
                                             if (!actualVal.equals(sVals)) {
                                                 updateIDMUser = true;
                                                 if (debug.messageEnabled())
-                                                    debug.message(method + " updateIDMUser - sVals: " + sVals + " actualAttrVal: " + actualVal);
+                                                    debug.message(method + " updateIDMUser - sVals: " + sVals
+                                                            + " actualAttrVal: " + actualVal);
                                             }
                                         } else {
-                                            //se l'attuale mobile dell'utente è null il valore viene impostato
+                                            // se l'attuale mobile dell'utente è null il valore viene impostato
                                             attrs.put(CDM_MAIL_ATTR, vals);
                                             if (debug.messageEnabled()) {
-                                                debug.message(method + "set[" + CDM_MAIL_ATTR + "]  valore Attributo sActualValueEmail NULL ... ");
+                                                debug.message(method + "set[" + CDM_MAIL_ATTR
+                                                        + "]  valore Attributo sActualValueEmail NULL ... ");
                                             }
                                         }
                                         // Check per i campi ldap cdmDomicilioDigitale
-                                    }else if(userAttr.equalsIgnoreCase(CDM_DOMICILIO_DIGITALE)){
+                                    } else if (userAttr.equalsIgnoreCase(CDM_DOMICILIO_DIGITALE)) {
 
                                         if (actualAttrVal != null && !actualAttrVal.isEmpty()) {
                                             for (String valore : actualAttrVal) {
                                                 if (!valore.equals(sVals)) {
                                                     updateIDMUser = true;
-                                                    //se sono diversi imposta l'attributo
+                                                    // se sono diversi imposta l'attributo
                                                     attrs.put(CDM_DOMICILIO_DIGITALE, vals);
                                                     if (debug.messageEnabled())
-                                                        debug.message(method + "userAttr[" + CDM_DOMICILIO_DIGITALE + "] actualAttrVal: " + actualAttrVal+ " vals[ " + vals + "]");
+                                                        debug.message(method + "userAttr[" + CDM_DOMICILIO_DIGITALE
+                                                                + "] actualAttrVal: " + actualAttrVal + " vals[ " + vals
+                                                                + "]");
                                                 }
                                             }
                                         } else {
@@ -1415,23 +1531,26 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                                                 debug.message(method + userAttr + ": " + vals);
                                         }
 
-                                    }else {
+                                    } else {
                                         if (!actualVal.equalsIgnoreCase(sVals)) {
                                             attrs.put(userAttr, vals);
-                                            if (!userAttr.equalsIgnoreCase(PWD_ATTR) && !userAttr.equalsIgnoreCase(ENABLE_ATTR)) {
+                                            if (!userAttr.equalsIgnoreCase(PWD_ATTR)
+                                                    && !userAttr.equalsIgnoreCase(ENABLE_ATTR)) {
                                                 updateIDMUser = true;
                                                 if (debug.messageEnabled())
-                                                    debug.message(method + "userAttr[" + userAttr + "] actualAttrVal: " + actualAttrVal+ " vals[ " + vals + "]");
+                                                    debug.message(method + "userAttr[" + userAttr + "] actualAttrVal: "
+                                                            + actualAttrVal + " vals[ " + vals + "]");
                                             }
                                         }
                                     }
                                 }
                             } else {
                                 if (vals != null && !vals.isEmpty()) {
-                                    for (Iterator<String> iter = vals.iterator(); iter.hasNext(); ) {
+                                    for (Iterator<String> iter = vals.iterator(); iter.hasNext();) {
                                         String value = iter.next();
                                         if (value != null && !value.isEmpty()) {
-                                            if (!userAttr.equalsIgnoreCase(PWD_ATTR) && !userAttr.equalsIgnoreCase(ENABLE_ATTR)) {
+                                            if (!userAttr.equalsIgnoreCase(PWD_ATTR)
+                                                    && !userAttr.equalsIgnoreCase(ENABLE_ATTR)) {
                                                 updateIDMUser = true;
                                                 // se il valore attuale � null e quello SAML no lo imposta
                                                 attrs.put(userAttr, vals);
@@ -1444,12 +1563,12 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                             }
                         }
                     } else {
-                        //se il valore del SAML � null
+                        // se il valore del SAML � null
                         if (debug.messageEnabled())
                             debug.message(method + " valore Attributo SAML [" + userAttr + "] NULL ... ");
                         if (actualAttrVal != null && !actualAttrVal.isEmpty()) {
                             updateIDMUser = true;
-                            //se il valore SAML � null ma l'attuale valore dell'attr non lo � lo svuota
+                            // se il valore SAML � null ma l'attuale valore dell'attr non lo � lo svuota
                             attrs.put(userAttr, new HashSet<String>());
                             if (debug.messageEnabled())
                                 debug.message(method + userAttr + " set VUOTO! ");
@@ -1461,32 +1580,39 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
 
                     if (debug.messageEnabled()) {
                         for (Entry<String, Set<String>> entity : attrs.entrySet())
-                            debug.message(method + "ATTRIBUTO NOME D'AGGIORNARE = " + entity.getKey() + "/// ATTRIBUTO VALORE D'AGGIORNARE = " + entity.getValue());
+                            debug.message(method + "ATTRIBUTO NOME D'AGGIORNARE = " + entity.getKey()
+                                    + "/// ATTRIBUTO VALORE D'AGGIORNARE = " + entity.getValue());
                     }
 
-                    //aggiornamento Identity LDAP
+                    // aggiornamento Identity LDAP
                     usrIdentity.setAttributes(attrs);
                     usrIdentity.store();
 
-                    //TODO verificare se � un solo attributo e se � password o inetUserStatus non fa la chiamata REST
+                    // TODO verificare se � un solo attributo e se � password o inetUserStatus non
+                    // fa la chiamata REST
                     if (idmRestURL != null && !idmRestURL.isEmpty()) {
                         if (updateIDMUser) {
-                            //chiamata REST a IDM
+                            // chiamata REST a IDM
                             CustomAziendeRestUtil restUtil;
                             try {
                                 restUtil = new CustomAziendeRestUtil(idmRestURL, idmRestURL_admin, idmRestURL_pwd);
                                 if (restUtil.updateIDMUser(usrIdentity.getName(), attrs))
-                                    debug.message(method + " OK Chiamata REST IDM user[" + usrIdentity.getName() + "] Aggiornato");
+                                    debug.message(method + " OK Chiamata REST IDM user[" + usrIdentity.getName()
+                                            + "] Aggiornato");
                                 else {
-                                    debug.error(method + "ERRORE chiamata rest [" + idmRestURL + "]  IDM user[" + usrIdentity.getName() + "]");
-                                    //	    						return false; //si � scelto di non interrompere l'accesso in caso di eccezioni o errori nella chiamata REST
+                                    debug.error(method + "ERRORE chiamata rest [" + idmRestURL + "]  IDM user["
+                                            + usrIdentity.getName() + "]");
+                                    // return false; //si � scelto di non interrompere l'accesso in caso di
+                                    // eccezioni o errori nella chiamata REST
                                 }
                             } catch (Exception e) {
-                                debug.error(method + "ERRORE chiamata rest [" + idmRestURL + "] IDM user [" + usrIdentity.getName() + "]:: " + e.getMessage());
+                                debug.error(method + "ERRORE chiamata rest [" + idmRestURL + "] IDM user ["
+                                        + usrIdentity.getName() + "]:: " + e.getMessage());
                             }
                         } else {
                             if (debug.messageEnabled())
-                                debug.message(method + " aggiornamento IDM non effettuato per user[" + usrIdentity.getName() + "]:: aggiornamento non necessario");
+                                debug.message(method + " aggiornamento IDM non effettuato per user["
+                                        + usrIdentity.getName() + "]:: aggiornamento non necessario");
                         }
                     } else {
                         if (debug.messageEnabled())
@@ -1506,17 +1632,19 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
     }
 
     /**
-     * NOTA: In caso di aggiunta di un attributo LDAP da modificare ricordarsi di aggiungere il mapping IDM
+     * NOTA: In caso di aggiunta di un attributo LDAP da modificare ricordarsi di
+     * aggiungere il mapping IDM
      *
      * @param attributeMap Attributi del map definito sull'SP spid
      * @param attributes   Attrbiuti asserzione SAML
      * @param userID       Nome utente
      * @param userAttrMap  Map contente gli attributi da impostare
-     * @return Lo stesso map dell'input userAttrMap con l'aggiunta degli attributi SAML mappati
+     * @return Lo stesso map dell'input userAttrMap con l'aggiunta degli attributi
+     *         SAML mappati
      * @throws ParseException
      */
     private Map<String, List<?>> setUpdateUserAttrMap(Map<String, List<String>> attributeMap,
-                                                      List<Attribute> attributes, String userID, Map<String, List<?>> userAttrMap)
+            List<Attribute> attributes, String userID, Map<String, List<?>> userAttrMap)
             throws ParseException {
         String method = "[setUpdateUserAttrMap]";
         if (debug.messageEnabled())
@@ -1525,70 +1653,82 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
         if (debug.messageEnabled())
             debug.message(method + "******* INIZIO Iterator User [" + userID + "] - Attributi Asserzione ********");
 
-        for (Iterator<Attribute> iter = attributes.iterator(); iter.hasNext(); ) {
+        for (Iterator<Attribute> iter = attributes.iterator(); iter.hasNext();) {
             Attribute attribute = iter.next();
 
             if (debug.messageEnabled())
-                debug.message(method + " NOME ATTRIBUTO ASSERTION = " + attribute.getName() + "/// VALORE ATTRIBUTO ASSERTION = " + attribute.getAttributeValueString());
+                debug.message(method + " NOME ATTRIBUTO ASSERTION = " + attribute.getName()
+                        + "/// VALORE ATTRIBUTO ASSERTION = " + attribute.getAttributeValueString());
 
             if (attribute.getName() != null && attribute.getAttributeValueString() != null) {
                 if (getAttrAssertion(attribute.getAttributeValueString()) != null &&
                         !getAttrAssertion(attribute.getAttributeValueString()).equals("-")) {
                     // aggiunto attributo cdmCodiceFiscale e cdmCodiceFiscaleDelegato
-                    if (attribute.getName().equalsIgnoreCase("fiscalNumber") && attribute.getAttributeValueString() != null) {
+                    if (attribute.getName().equalsIgnoreCase("fiscalNumber")
+                            && attribute.getAttributeValueString() != null) {
                         String codfisc = getAttrAssertion(attribute.getAttributeValueString());
                         if (codfisc != null && codfisc.length() >= TINSUFF.length()) {
 
                             userAttrMap.put(CDM_CODICE_FISCALE, Arrays.asList(codfisc.substring(TINSUFF.length())));
-                            userAttrMap.put(CDM_CODICE_FISCALE_DELEGATO, Arrays.asList(codfisc.substring(TINSUFF.length())));
+                            userAttrMap.put(CDM_CODICE_FISCALE_DELEGATO,
+                                    Arrays.asList(codfisc.substring(TINSUFF.length())));
 
                             if (debug.messageEnabled()) {
-                                debug.message(method + "Attr Assertion MAP - " + CDM_CODICE_FISCALE + ": " + codfisc.substring(TINSUFF.length()));
-                                debug.message(method + "Attr Assertion MAP - " + CDM_CODICE_FISCALE_DELEGATO + ": " + codfisc.substring(TINSUFF.length()));
+                                debug.message(method + "Attr Assertion MAP - " + CDM_CODICE_FISCALE + ": "
+                                        + codfisc.substring(TINSUFF.length()));
+                                debug.message(method + "Attr Assertion MAP - " + CDM_CODICE_FISCALE_DELEGATO + ": "
+                                        + codfisc.substring(TINSUFF.length()));
                             }
                         }
                         // aggiunto attributo ivaCode
-                    } else if (attribute.getName().equalsIgnoreCase("ivaCode") && attribute.getAttributeValueString() != null) {
+                    } else if (attribute.getName().equalsIgnoreCase("ivaCode")
+                            && attribute.getAttributeValueString() != null) {
                         String ivaCode = getAttrAssertion(attribute.getAttributeValueString());
                         if (ivaCode != null && ivaCode.length() >= VATSUFF.length())
-                            userAttrMap.put(getCorrAttrLDAP(attributeMap, attribute.getName()), Arrays.asList(ivaCode.substring(VATSUFF.length())));
+                            userAttrMap.put(getCorrAttrLDAP(attributeMap, attribute.getName()),
+                                    Arrays.asList(ivaCode.substring(VATSUFF.length())));
 
                         // aggiunto attributo cdmDomicilioDigitale
-                }else if(attribute.getName().equalsIgnoreCase("digitalAddress") && attribute.getAttributeValueString() != null){
-                    String digitalAddress = getAttrAssertion(util.getAttributeVal(attributes, "digitalAddress"));
-                    if (debug.messageEnabled())
-                        debug.message(method + " -- (" + CDM_DOMICILIO_DIGITALE + "): " + digitalAddress);
+                    } else if (attribute.getName().equalsIgnoreCase("digitalAddress")
+                            && attribute.getAttributeValueString() != null) {
+                        String digitalAddress = getAttrAssertion(util.getAttributeVal(attributes, "digitalAddress"));
+                        if (debug.messageEnabled())
+                            debug.message(method + " -- (" + CDM_DOMICILIO_DIGITALE + "): " + digitalAddress);
 
-                    userAttrMap.put(CDM_DOMICILIO_DIGITALE, Arrays.asList(digitalAddress));
+                        userAttrMap.put(CDM_DOMICILIO_DIGITALE, Arrays.asList(digitalAddress));
 
-                }
+                    }
 
                     // aggiunto attributo companyFiscalNumber
                     /**
                      * Logica per eliminare il suffisso TINIT- alla companyFiscalNumber
                      */
-                    else if (attribute.getName().equalsIgnoreCase("companyFiscalNumber") && attribute.getAttributeValueString() != null) {
+                    else if (attribute.getName().equalsIgnoreCase("companyFiscalNumber")
+                            && attribute.getAttributeValueString() != null) {
                         String ivaCodeSpidAziende = getAttrAssertion(attribute.getAttributeValueString());
                         if (ivaCodeSpidAziende != null && ivaCodeSpidAziende.length() >= TINSUFF.length())
-                            userAttrMap.put(CDM_COMPANY_FISCAL_NUMBER_ATTRNAME, Arrays.asList(ivaCodeSpidAziende.substring(TINSUFF.length())));
+                            userAttrMap.put(CDM_COMPANY_FISCAL_NUMBER_ATTRNAME,
+                                    Arrays.asList(ivaCodeSpidAziende.substring(TINSUFF.length())));
 
                         // aggiunto attributo SPIDemail
-                    } else if (attribute.getName().equalsIgnoreCase("email") && attribute.getAttributeValueString() != null) {
-                            String spidEmail = getAttrAssertion(util.getAttributeVal(attributes, "email"));
+                    } else if (attribute.getName().equalsIgnoreCase("email")
+                            && attribute.getAttributeValueString() != null) {
+                        String spidEmail = getAttrAssertion(util.getAttributeVal(attributes, "email"));
 
-                            if (debug.messageEnabled())
-                                debug.message(method + " -- (" + CDM_MAIL_ATTR + "): " + spidEmail);
+                        if (debug.messageEnabled())
+                            debug.message(method + " -- (" + CDM_MAIL_ATTR + "): " + spidEmail);
 
-                            userAttrMap.put(CDM_MAIL_ATTR, Arrays.asList(spidEmail));
+                        userAttrMap.put(CDM_MAIL_ATTR, Arrays.asList(spidEmail));
 
                         // aggiunto attributo SpidMobile
-                    } else if (attribute.getName().equalsIgnoreCase("mobilePhone") && attribute.getAttributeValueString() != null) {
-                            String spidAziendeMobile = getAttrAssertion(util.getAttributeVal(attributes, "mobilePhone"));
+                    } else if (attribute.getName().equalsIgnoreCase("mobilePhone")
+                            && attribute.getAttributeValueString() != null) {
+                        String spidAziendeMobile = getAttrAssertion(util.getAttributeVal(attributes, "mobilePhone"));
 
-                            if (debug.messageEnabled())
-                                debug.message(method + " -- (" + CDM_MOBILE_ATTR + "): " + spidAziendeMobile);
+                        if (debug.messageEnabled())
+                            debug.message(method + " -- (" + CDM_MOBILE_ATTR + "): " + spidAziendeMobile);
 
-                            userAttrMap.put(CDM_MOBILE_ATTR, Arrays.asList(spidAziendeMobile));
+                        userAttrMap.put(CDM_MOBILE_ATTR, Arrays.asList(spidAziendeMobile));
 
                     } else {
                         List<String> lAttrLDAP = getAllCorrAttrLDAP(attributeMap, attribute.getName());
@@ -1596,45 +1736,53 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                         if (lAttrLDAP != null) { // aggiunto
                             for (String attrLDAP : lAttrLDAP) {
                                 if (debug.messageEnabled())
-                                    debug.message(method + "Generic Attr Assertion MAP - " + attrLDAP + " : " + attrLDAPVal);
+                                    debug.message(
+                                            method + "Generic Attr Assertion MAP - " + attrLDAP + " : " + attrLDAPVal);
                                 userAttrMap.put(attrLDAP, Arrays.asList(attrLDAPVal));
                             }
                         }
                     }
                 } else {
                     // TODO DA VERIFICARE
-                    //Attributo SAML nullo o vuoto
-                    //cdmCodiceFiscale e cdmCodiceFiscaleDelegato a null
-                    if (attribute.getName().equalsIgnoreCase("fiscalNumber") && attribute.getAttributeValueString() != null) {
-						userAttrMap.put(CDM_CODICE_FISCALE, null );
+                    // Attributo SAML nullo o vuoto
+                    // cdmCodiceFiscale e cdmCodiceFiscaleDelegato a null
+                    if (attribute.getName().equalsIgnoreCase("fiscalNumber")
+                            && attribute.getAttributeValueString() != null) {
+                        userAttrMap.put(CDM_CODICE_FISCALE, null);
                         userAttrMap.put(CDM_CODICE_FISCALE_DELEGATO, null);
-                        debug.error(method + "Attr Assertion MAP - "+CDM_CODICE_FISCALE+": NULL !!!");
-                        debug.error(method + "Attr Assertion MAP - "+CDM_CODICE_FISCALE_DELEGATO+": NULL !!!");
+                        debug.error(method + "Attr Assertion MAP - " + CDM_CODICE_FISCALE + ": NULL !!!");
+                        debug.error(method + "Attr Assertion MAP - " + CDM_CODICE_FISCALE_DELEGATO + ": NULL !!!");
 
-                        //ivaCode a null
-                    } else if (attribute.getName().equalsIgnoreCase("ivaCode") && attribute.getAttributeValueString() != null) {
+                        // ivaCode a null
+                    } else if (attribute.getName().equalsIgnoreCase("ivaCode")
+                            && attribute.getAttributeValueString() != null) {
                         userAttrMap.put(getCorrAttrLDAP(attributeMap, attribute.getName()), null);
                         if (debug.messageEnabled())
                             debug.message(method + "Attr Assertion MAP - ivaCode: NULL !!!");
 
-                        //cdmDomicilioDigitale a null
-                    }else if(attribute.getName().equalsIgnoreCase("digitalAddress") && attribute.getAttributeValueString() != null) {
+                        // cdmDomicilioDigitale a null
+                    } else if (attribute.getName().equalsIgnoreCase("digitalAddress")
+                            && attribute.getAttributeValueString() != null) {
                         userAttrMap.put(CDM_DOMICILIO_DIGITALE, null);
-                        debug.error(method + "Attr Assertion MAP - "+CDM_DOMICILIO_DIGITALE+": NULL !!!");
+                        debug.error(method + "Attr Assertion MAP - " + CDM_DOMICILIO_DIGITALE + ": NULL !!!");
 
-                        //cdmCompanyFiscalNumber a null
-                    }else if (attribute.getName().equalsIgnoreCase("companyFiscalNumber") && attribute.getAttributeValueString() != null) {
+                        // cdmCompanyFiscalNumber a null
+                    } else if (attribute.getName().equalsIgnoreCase("companyFiscalNumber")
+                            && attribute.getAttributeValueString() != null) {
                         userAttrMap.put(CDM_COMPANY_FISCAL_NUMBER_ATTRNAME, null);
-                        debug.error(method + "Attr Assertion MAP - " + CDM_COMPANY_FISCAL_NUMBER_ATTRNAME + ": NULL !!!");
+                        debug.error(
+                                method + "Attr Assertion MAP - " + CDM_COMPANY_FISCAL_NUMBER_ATTRNAME + ": NULL !!!");
 
-                        //email a null
-                    } else if (attribute.getName().equalsIgnoreCase("email") && attribute.getAttributeValueString() != null) {
+                        // email a null
+                    } else if (attribute.getName().equalsIgnoreCase("email")
+                            && attribute.getAttributeValueString() != null) {
                         userAttrMap.put(CDM_MAIL_ATTR, null);
 
                         debug.error(method + " -- (" + CDM_MAIL_ATTR + "): NULL!!! ");
 
-                        //mobilePhone a null
-                    } else if (attribute.getName().equalsIgnoreCase("mobilePhone") && attribute.getAttributeValueString() != null) {
+                        // mobilePhone a null
+                    } else if (attribute.getName().equalsIgnoreCase("mobilePhone")
+                            && attribute.getAttributeValueString() != null) {
 
                         userAttrMap.put(CDM_MOBILE_ATTR, null);
 
@@ -1665,10 +1813,10 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
             String sCognome = getAttrAssertion(util.getAttributeVal(attributes, "familyName"));
             userAttrMap.put(CDM_CN, Arrays.asList(sNome + " " + sCognome));
 
-
             // aggiunto attributo cdmGiuridicaFisica
             /**
-             * Abbiamo levato il controllo per il campo perchè la classe è innescata quando l'accesso è sempre fatto da una company
+             * Abbiamo levato il controllo per il campo perchè la classe è innescata quando
+             * l'accesso è sempre fatto da una company
              * quindi avrà sempre come valore la "G"
              */
             userAttrMap.put(CDM_GIURIDICA_FISICA, Arrays.asList("G"));
@@ -1697,24 +1845,28 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
             }
 
             /**
-             * Gestione del campo cdmRegisteredOffice, cdmSedeCAP,cdmSedeProvincia,cdmSedeVia,cdmSedeComune
+             * Gestione del campo cdmRegisteredOffice,
+             * cdmSedeCAP,cdmSedeProvincia,cdmSedeVia,cdmSedeComune
              */
             if (getAttrAssertion(util.getAttributeVal(attributes, "registeredOffice")) != null) {
 
                 if (debug.messageEnabled())
-                    debug.message(method + "registeredOffice ---> " + getAttrAssertion(util.getAttributeVal(attributes, "registeredOffice")));
+                    debug.message(method + "registeredOffice ---> "
+                            + getAttrAssertion(util.getAttributeVal(attributes, "registeredOffice")));
 
                 try {
                     String sAddress = getAttrAssertion(util.getAttributeVal(attributes, "registeredOffice"));
 
                     userAttrMap.put(CDM_REGISTERED_OFFICE, Arrays.asList(sAddress));
 
-                    // Metodo che scompattare il campo registeredOffice dell'assertion per popolare i campi del LDAP
+                    // Metodo che scompattare il campo registeredOffice dell'assertion per popolare
+                    // i campi del LDAP
                     Map<String, String> mAddress = getAddressElementOffice(sAddress);
 
                     if (mAddress != null && mAddress.size() > 0) {
                         if (debug.messageEnabled()) {
-                            debug.message(method + "Valorizzo i campi cdmSedeCAP,cdmSedeProvincia,cdmSedeVia,cdmSedeComune");
+                            debug.message(
+                                    method + "Valorizzo i campi cdmSedeCAP,cdmSedeProvincia,cdmSedeVia,cdmSedeComune");
                         }
                         userAttrMap.put(CDM_SEDE_CAP, Arrays.asList(mAddress.get("cdmSedeCAP")));
                         userAttrMap.put(CDM_SEDE_PROVINCIA, Arrays.asList(mAddress.get("cdmSedeProvincia")));
@@ -1734,7 +1886,8 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                 if (debug.messageEnabled())
                     debug.message(method + " -- (sdataNascDate): " + sdataNascDate);
                 Date dataNascDate = dateFormat.parse(sdataNascDate);
-                userAttrMap.put(CDM_NASCITA_DATA, Arrays.asList(new SimpleDateFormat("yyyyMMdd000000").format(dataNascDate)));
+                userAttrMap.put(CDM_NASCITA_DATA,
+                        Arrays.asList(new SimpleDateFormat("yyyyMMdd000000").format(dataNascDate)));
             }
 
             if (debug.messageEnabled())
@@ -1747,16 +1900,17 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
     /**
      * Calcola il MailChanged-Flag per la pagina di post login
      *
-     * @param assertionMailAttrVal ->  Valore email presente nell'asserzione.
-     * @param ldapSPIDMailAttrVal  ->  Valore SPIDmail presente su LDAP
-     * @param ldapMailAttrVal      ->  Valore SPIDmail presente su LDAP
-     * @return String  ->  il valore del flag mailChangedFlag
+     * @param assertionMailAttrVal -> Valore email presente nell'asserzione.
+     * @param ldapSPIDMailAttrVal  -> Valore SPIDmail presente su LDAP
+     * @param ldapMailAttrVal      -> Valore SPIDmail presente su LDAP
+     * @return String -> il valore del flag mailChangedFlag
      */
-    public String checkMailChangedFlag(String assertionMailAttrVal, String ldapSPIDMailAttrVal, String
-            ldapMailAttrVal) {
+    public String checkMailChangedFlag(String assertionMailAttrVal, String ldapSPIDMailAttrVal,
+            String ldapMailAttrVal) {
         String method = "[checkMailChangedFlag]:: ";
 
-        // Se l'attributo dell'asserzione � diverso dagli attributi LDAP mail e SPIDEmail imposto a true il relativo flag
+        // Se l'attributo dell'asserzione � diverso dagli attributi LDAP mail e
+        // SPIDEmail imposto a true il relativo flag
         if (assertionMailAttrVal != null && !assertionMailAttrVal.isEmpty()) {
             if (ldapSPIDMailAttrVal != null && !assertionMailAttrVal.equalsIgnoreCase(ldapSPIDMailAttrVal)) {
                 if (ldapMailAttrVal != null && !assertionMailAttrVal.equalsIgnoreCase(ldapMailAttrVal)) {
@@ -1764,7 +1918,8 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                         debug.message(method + "rilevato cambio email, imposto mailChangedFlag a true ");
                     return "true";
                 }
-            } else if (ldapSPIDMailAttrVal == null && ldapMailAttrVal != null && !assertionMailAttrVal.equalsIgnoreCase(ldapMailAttrVal)) {
+            } else if (ldapSPIDMailAttrVal == null && ldapMailAttrVal != null
+                    && !assertionMailAttrVal.equalsIgnoreCase(ldapMailAttrVal)) {
                 if (debug.messageEnabled())
                     debug.message(method + "ldapSPIDMailAttrVal null, imposto mailChangedFlag a true ");
                 return "true";
@@ -1779,25 +1934,29 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
     /**
      * Calcola il MobileChanged-Flag per la pagina di post login
      *
-     * @param assertionMobileAttrVal ->  Valore mobile presente nell'asserzione.
-     * @param ldapSPIDMobileAttrVal  ->  Valore SPIDmobile presente su LDAP
-     * @param ldapMobileAttrVal      ->  Valore SPIDmobile presente su LDAP
-     * @return String  ->  il valore del flag mobileChangedFlag
+     * @param assertionMobileAttrVal -> Valore mobile presente nell'asserzione.
+     * @param ldapSPIDMobileAttrVal  -> Valore SPIDmobile presente su LDAP
+     * @param ldapMobileAttrVal      -> Valore SPIDmobile presente su LDAP
+     * @return String -> il valore del flag mobileChangedFlag
      */
-    public String checkMobileChangedFlag(String assertionMobileAttrVal, String ldapSPIDMobileAttrVal, String
-            ldapMobileAttrVal) {
+    public String checkMobileChangedFlag(String assertionMobileAttrVal, String ldapSPIDMobileAttrVal,
+            String ldapMobileAttrVal) {
         String method = "[checkMobileChangedFlag]:: ";
 
-        // Se l'attributo dell'asserzione � diverso dagli attributi LDAP mobile e SPIDMobile imposto a true il relativo flag
+        // Se l'attributo dell'asserzione � diverso dagli attributi LDAP mobile e
+        // SPIDMobile imposto a true il relativo flag
         if (assertionMobileAttrVal != null && !assertionMobileAttrVal.isEmpty()) {
-            if (ldapSPIDMobileAttrVal != null && !assertionMobileAttrVal.replaceAll("^(\\+39|0039)", "").equalsIgnoreCase(ldapSPIDMobileAttrVal.replaceAll("^(\\+39|0039)", ""))) {
-                if (ldapMobileAttrVal != null && !assertionMobileAttrVal.replaceAll("^(\\+39|0039)", "").equalsIgnoreCase(ldapMobileAttrVal.replaceAll("^(\\+39|0039)", ""))) {
+            if (ldapSPIDMobileAttrVal != null && !assertionMobileAttrVal.replaceAll("^(\\+39|0039)", "")
+                    .equalsIgnoreCase(ldapSPIDMobileAttrVal.replaceAll("^(\\+39|0039)", ""))) {
+                if (ldapMobileAttrVal != null && !assertionMobileAttrVal.replaceAll("^(\\+39|0039)", "")
+                        .equalsIgnoreCase(ldapMobileAttrVal.replaceAll("^(\\+39|0039)", ""))) {
                     if (debug.messageEnabled())
                         debug.message(method + "rilevato cambio mobilePhone, imposto mobileChangedFlag a true ");
                     return "true";
                 }
             } else if (ldapSPIDMobileAttrVal == null && ldapMobileAttrVal != null
-                    && !assertionMobileAttrVal.replaceAll("^(\\+39|0039)", "").equalsIgnoreCase(ldapMobileAttrVal.replaceAll("^(\\+39|0039)", ""))) {
+                    && !assertionMobileAttrVal.replaceAll("^(\\+39|0039)", "")
+                            .equalsIgnoreCase(ldapMobileAttrVal.replaceAll("^(\\+39|0039)", ""))) {
                 if (debug.messageEnabled())
                     debug.message(method + "ldapSPIDMobileAttrVal null, imposto mobileChangedFlag a true ");
                 return "true";
@@ -1812,7 +1971,8 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
     /**
      * Converte il modifyTimestamp LDAP in una data
      *
-     * @param ldapDate ->  data LDAP in formato stringa, dateFormat yyyyMMddHHmmssZ, TimeZone GMT.
+     * @param ldapDate -> data LDAP in formato stringa, dateFormat yyyyMMddHHmmssZ,
+     *                 TimeZone GMT.
      * @return Date
      */
     public static Date parseLdapDate(String ldapDate) {
@@ -1834,22 +1994,26 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
     }
 
     /**
-     * Calcola i flags per la pagina di post login eseguendo una ricerca sullo user store
-     * In caso delle company, la ricerca sullo UserStore avviene con l'uid=p.iva_codicefiscale
+     * Calcola i flags per la pagina di post login eseguendo una ricerca sullo user
+     * store
+     * In caso delle company, la ricerca sullo UserStore avviene con
+     * l'uid=p.iva_codicefiscale
      *
-     * @param realm        ->  Realm dell'SP hosted.
-     * @param ssoResponse  ->  Response dall'IDP
-     * @param hostEntityID ->  EntityID dell'hosted SP
-     * @return HashMap<String, String>  ->  i valori dei 4 flags newCreationFlag, mailChangedFlag, mobileChangedFlag e newCreationknownFlag
-     * ed in caso oldMail e oldMobile che rappresentano i valori LDAP dell'account SPID pregresso
+     * @param realm        -> Realm dell'SP hosted.
+     * @param ssoResponse  -> Response dall'IDP
+     * @param hostEntityID -> EntityID dell'hosted SP
+     * @return HashMap<String, String> -> i valori dei 4 flags newCreationFlag,
+     *         mailChangedFlag, mobileChangedFlag e newCreationknownFlag
+     *         ed in caso oldMail e oldMobile che rappresentano i valori LDAP
+     *         dell'account SPID pregresso
      */
     public HashMap<String, String> getPostLoginFlags(String realm, Response ssoResponse, String hostEntityID) {
         String method = "[getPostLoginFlags]:: ";
         if (debug.messageEnabled())
             debug.message(method + "inizio ... ");
 
-        //Inizializzo tutti i flags a false
-        HashMap<String, String> postLoginFlags = new HashMap<String, String>();  // Mappa contenente i flags
+        // Inizializzo tutti i flags a false
+        HashMap<String, String> postLoginFlags = new HashMap<String, String>(); // Mappa contenente i flags
         String newCreationFlag = "false";
         String mailChangedFlag = "false";
         String mobileChangedFlag = "false";
@@ -1857,13 +2021,13 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
         String oldMail = null;
         String oldMobile = null;
 
-        //MODIFICA LOG SPID AZIENDE
+        // MODIFICA LOG SPID AZIENDE
         String cdmCodiceFiscaleDelegato = null, cdmPartitaIva = null; // Nome Utente utilizzato per la ricerca su LDAP
-        //String userID = null;
+        // String userID = null;
 
         Assertion assertion = null;
         List<AttributeStatement> attributeStatements = null;
-        List<Attribute> assertionAttributes = null;  // Lista degli attributi provenienti dall'asserzione SAML
+        List<Attribute> assertionAttributes = null; // Lista degli attributi provenienti dall'asserzione SAML
 
         try {
             // Recupero l'asserzione dalla ssoResponse ed i suoi attributi
@@ -1880,59 +2044,68 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
 
             // Recupero l'attributo da utilizzare per la ricerca dell'utente
             if (assertionAttributes != null) {
-                // Se l'autofederazione � attiva recupero l'attributo di autofederazione per utilizzarlo nella ricerca utente
-//                String useAutoFed = getAttribute(realm, hostEntityID, SAML2Constants.AUTO_FED_ENABLED);
-//                if ((useAutoFed != null) && useAutoFed.equalsIgnoreCase("true")) {
-//                    // Recupero il nome dell'attributo
-//                    String autoFedAttr = getAttribute(realm, hostEntityID, SAML2Constants.AUTO_FED_ATTRIBUTE);
-//                    if (debug.messageEnabled())
-//                        debug.message(method + "attributo di auto federazione autoFedAttr: " + autoFedAttr);
-//                    if (autoFedAttr != null) {
-//                        if (debug.messageEnabled())
-//                            debug.message(method + "utilizzo l'attributo di auto federazione come UserID");
+                // Se l'autofederazione � attiva recupero l'attributo di autofederazione per
+                // utilizzarlo nella ricerca utente
+                // String useAutoFed = getAttribute(realm, hostEntityID,
+                // SAML2Constants.AUTO_FED_ENABLED);
+                // if ((useAutoFed != null) && useAutoFed.equalsIgnoreCase("true")) {
+                // // Recupero il nome dell'attributo
+                // String autoFedAttr = getAttribute(realm, hostEntityID,
+                // SAML2Constants.AUTO_FED_ATTRIBUTE);
+                // if (debug.messageEnabled())
+                // debug.message(method + "attributo di auto federazione autoFedAttr: " +
+                // autoFedAttr);
+                // if (autoFedAttr != null) {
+                // if (debug.messageEnabled())
+                // debug.message(method + "utilizzo l'attributo di auto federazione come
+                // UserID");
 
-
-                cdmPartitaIva = getAttrAssertion(util.getAttributeVal(assertionAttributes, "ivaCode")).substring(VATSUFF.length());
-                cdmCodiceFiscaleDelegato = getAttrAssertion(util.getAttributeVal(assertionAttributes, "fiscalNumber")).substring(TINSUFF.length());
-
+                cdmPartitaIva = getAttrAssertion(util.getAttributeVal(assertionAttributes, "ivaCode"))
+                        .substring(VATSUFF.length());
+                cdmCodiceFiscaleDelegato = getAttrAssertion(util.getAttributeVal(assertionAttributes, "fiscalNumber"))
+                        .substring(TINSUFF.length());
 
                 // Recupero il valore dell'attributo
-                //userID = getAttrAssertion(util.getAttributeVal(assertionAttributes, autoFedAttr));
+                // userID = getAttrAssertion(util.getAttributeVal(assertionAttributes,
+                // autoFedAttr));
 
-                //MODIFICA LOG SPID AZIENDE
+                // MODIFICA LOG SPID AZIENDE
                 // Eseguo il substring nel caso inizi con il prefisso TINSUFF
-                //if (userID != null && userID.startsWith(TINSUFF))
-                //userID = userID.substring(TINSUFF.length());
-                //if (debug.messageEnabled())
-                //debug.message(method + "userID: " + userID);
-//                    } else
-//                        debug.error(method + "attributo di autofederazione NON definito.");
-//                } else {  // Altrimenti utilizzo il nameID (se indicato nell'Entity Provider)
-//                    // Recupero il NameID dall'asserzione
-//                    NameID nameID = util.getNameID(assertion, hostEntityID, realm);
-//                    if (nameID != null && nameID.getValue() != null) {
-//                        // Controllo se nella configurazione dell'Entity Provider � indicato di utilizzare il NameID come UserID
-//                        String useNameID = getAttribute(realm, hostEntityID, SAML2Constants.USE_NAMEID_AS_SP_USERID);
-//                        if ((useNameID != null) && useNameID.equalsIgnoreCase("true")) {
-//                            if (debug.messageEnabled())
-//                                debug.message(method + "utilizzo NameID come UserID");
-//                            // Recupero il valore del nameID
-//                            userID = nameID.getValue().toUpperCase();
-//                            // Eseguo il substring nel caso inizi con il prefisso TINSUFF
-//                            if (userID != null && userID.startsWith(TINSUFF))
-//                                userID = userID.substring(TINSUFF.length());
-//                            if (debug.messageEnabled())
-//                                debug.message(method + "userID: " + userID);
-//                        } else
-//                            debug.error(method + "useNameID NULL or useNameID is FALSE : " + useNameID);
-//                    } else
-//                        debug.error(method + "NameID from assertion null ");
-//                }
+                // if (userID != null && userID.startsWith(TINSUFF))
+                // userID = userID.substring(TINSUFF.length());
+                // if (debug.messageEnabled())
+                // debug.message(method + "userID: " + userID);
+                // } else
+                // debug.error(method + "attributo di autofederazione NON definito.");
+                // } else { // Altrimenti utilizzo il nameID (se indicato nell'Entity Provider)
+                // // Recupero il NameID dall'asserzione
+                // NameID nameID = util.getNameID(assertion, hostEntityID, realm);
+                // if (nameID != null && nameID.getValue() != null) {
+                // // Controllo se nella configurazione dell'Entity Provider � indicato di
+                // utilizzare il NameID come UserID
+                // String useNameID = getAttribute(realm, hostEntityID,
+                // SAML2Constants.USE_NAMEID_AS_SP_USERID);
+                // if ((useNameID != null) && useNameID.equalsIgnoreCase("true")) {
+                // if (debug.messageEnabled())
+                // debug.message(method + "utilizzo NameID come UserID");
+                // // Recupero il valore del nameID
+                // userID = nameID.getValue().toUpperCase();
+                // // Eseguo il substring nel caso inizi con il prefisso TINSUFF
+                // if (userID != null && userID.startsWith(TINSUFF))
+                // userID = userID.substring(TINSUFF.length());
+                // if (debug.messageEnabled())
+                // debug.message(method + "userID: " + userID);
+                // } else
+                // debug.error(method + "useNameID NULL or useNameID is FALSE : " + useNameID);
+                // } else
+                // debug.error(method + "NameID from assertion null ");
+                // }
             } else
                 debug.error(method + "nessun attributo trovato nell'asserzione SAML ");
 
             // Eseguo la ricerca dell'utente
-            if ((cdmPartitaIva != null && !cdmPartitaIva.isEmpty()) && (cdmCodiceFiscaleDelegato != null && !cdmCodiceFiscaleDelegato.isEmpty())) {
+            if ((cdmPartitaIva != null && !cdmPartitaIva.isEmpty())
+                    && (cdmCodiceFiscaleDelegato != null && !cdmCodiceFiscaleDelegato.isEmpty())) {
 
                 String uidSearch = cdmPartitaIva + "_" + cdmCodiceFiscaleDelegato;
 
@@ -1941,13 +2114,18 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
 
                 List<AMIdentity> users = repoUtil.getUserStoreIdentity(uidSearch, realm);
 
-                String assertionMailAttrVal = getAttrAssertion(util.getAttributeVal(assertionAttributes, "email")); // Attributo email dall'asserzione
-                String assertionMobileAttrVal = getAttrAssertion(util.getAttributeVal(assertionAttributes, "mobilePhone")); // Attributo mobile dall'asserzione
+                String assertionMailAttrVal = getAttrAssertion(util.getAttributeVal(assertionAttributes, "email")); // Attributo
+                                                                                                                    // email
+                                                                                                                    // dall'asserzione
+                String assertionMobileAttrVal = getAttrAssertion(
+                        util.getAttributeVal(assertionAttributes, "mobilePhone")); // Attributo mobile dall'asserzione
 
-                // Se l'utente non esiste ancora verifico se impostare il flag newCreation o newCreationknown a true
+                // Se l'utente non esiste ancora verifico se impostare il flag newCreation o
+                // newCreationknown a true
                 if (users == null || users.isEmpty()) {
 
-                    // Se searchUserAttr presente innesco la nuova logica di ricerca degli account SPID pregressi
+                    // Se searchUserAttr presente innesco la nuova logica di ricerca degli account
+                    // SPID pregressi
                     if (searchUserAttr != null && !searchUserAttr.isEmpty()) {
 
                         // Recupero gli attributi per il searchFilter
@@ -1966,7 +2144,8 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                             isStringaFissa = attrAssertion.startsWith("$");
 
                             // Se l'attributo � una stringa fissa la inserisco direttamente nel searchFilter
-                            // Altrimenti recupero il valore presente nell'asserzione per l'attributo indicato
+                            // Altrimenti recupero il valore presente nell'asserzione per l'attributo
+                            // indicato
                             if (!isStringaFissa) {
                                 List<?> userVal = util.getAttributeVal(assertionAttributes, attrAssertion);
                                 if (userVal.get(0) != null) {
@@ -1984,7 +2163,8 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                             }
                         }
 
-                        // Eseguo ricerca di account pregressi utilizzando gli attributi passati da console AM in spid.searchuser.attribute
+                        // Eseguo ricerca di account pregressi utilizzando gli attributi passati da
+                        // console AM in spid.searchuser.attribute
                         users = repoUtil.getUserStoreIdentityQueryAnd(searchFilter, realm);
 
                         // Se non trovo utenti pregressi innesco semplicemente il newCreationFlag a true
@@ -1998,18 +2178,22 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                             newCreationknownFlag = "true";
 
                             if (debug.messageEnabled())
-                                debug.message(method + "nuovo utente con account SPID pregressi, imposto newCreationknownFlag a true");
+                                debug.message(method
+                                        + "nuovo utente con account SPID pregressi, imposto newCreationknownFlag a true");
 
-                            // Verifico se impostare a "true" i flags mailChangedFlag e mobileChangedFlag basandomi sugli account pregressi
+                            // Verifico se impostare a "true" i flags mailChangedFlag e mobileChangedFlag
+                            // basandomi sugli account pregressi
                             AMIdentity lastUserIdentity = null;
 
-                            // In caso di pi� account pregressi prendo quello con modifyTimestamp pi� recente
+                            // In caso di pi� account pregressi prendo quello con modifyTimestamp pi�
+                            // recente
                             if (users.size() > 1) {
                                 Date lastModifyTimestamp = null;
                                 for (AMIdentity user : users) {
                                     String modifyTimestamp = getAttrFromSet(user.getAttribute("modifyTimestamp"));
                                     if (debug.messageEnabled())
-                                        debug.message(method + "account pregresso " + user.getName().toString() + ", modifyTimestamp " + modifyTimestamp);
+                                        debug.message(method + "account pregresso " + user.getName().toString()
+                                                + ", modifyTimestamp " + modifyTimestamp);
 
                                     Date ldapDate = parseLdapDate(modifyTimestamp);
                                     if (lastModifyTimestamp != null && ldapDate != null) {
@@ -2017,54 +2201,84 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                                             lastModifyTimestamp = ldapDate;
                                             lastUserIdentity = user;
                                             if (debug.messageEnabled())
-                                                debug.message(method + "lastModifyTimestamp � maggiore di ldapDate, per ora questo � l'utente pi� recente");
+                                                debug.message(method
+                                                        + "lastModifyTimestamp � maggiore di ldapDate, per ora questo � l'utente pi� recente");
                                         } else {
                                             if (debug.messageEnabled())
-                                                debug.message(method + "lastModifyTimestamp � minore di ldapDate, l'utente non � il pi� recente");
+                                                debug.message(method
+                                                        + "lastModifyTimestamp � minore di ldapDate, l'utente non � il pi� recente");
                                         }
                                     } else {
                                         lastUserIdentity = user;
                                         lastModifyTimestamp = ldapDate;
                                         if (debug.messageEnabled())
-                                            debug.message(method + "primo account ciclato, per ora considero questo come utente modificato pi� recentemente");
+                                            debug.message(method
+                                                    + "primo account ciclato, per ora considero questo come utente modificato pi� recentemente");
                                     }
                                 }
                                 if (debug.messageEnabled())
-                                    debug.message(method + "account pregresso pi� recente = " + lastUserIdentity.getName().toString());
+                                    debug.message(method + "account pregresso pi� recente = "
+                                            + lastUserIdentity.getName().toString());
                             } else {
                                 // Altrimenti prendo l'unico utente rilevato
                                 lastUserIdentity = users.get(0);
 
                                 if (debug.messageEnabled())
-                                    debug.message(method + "account pregresso " + lastUserIdentity.getName().toString());
+                                    debug.message(
+                                            method + "account pregresso " + lastUserIdentity.getName().toString());
                             }
 
-                            Map<String, List<String>> attrMap = getAttributeMap(hostEntityID, realm); // Mappa dei nomi degli attributi Asserzione=LDAP (presi da console AM)
+                            Map<String, List<String>> attrMap = getAttributeMap(hostEntityID, realm); // Mappa dei nomi
+                                                                                                      // degli attributi
+                                                                                                      // Asserzione=LDAP
+                                                                                                      // (presi da
+                                                                                                      // console AM)
 
                             /* -- Verifica dell'attributo Mail -- */
-                            String ldapMailAttr = getCorrAttrLDAP(attrMap, "email"); // Nome dell'attributo LDAP corrispondente a email
-                            String ldapMailAttrVal = getAttrFromSet(lastUserIdentity.getAttribute(ldapMailAttr)); // Attuale attributo mail dall'LDAP
-                            String ldapSPIDMailAttrVal = getAttrFromSet(lastUserIdentity.getAttribute("SPIDemail")); // Attuale attributo SPIDEmail dall'LDAP
+                            String ldapMailAttr = getCorrAttrLDAP(attrMap, "email"); // Nome dell'attributo LDAP
+                                                                                     // corrispondente a email
+                            String ldapMailAttrVal = getAttrFromSet(lastUserIdentity.getAttribute(ldapMailAttr)); // Attuale
+                                                                                                                  // attributo
+                                                                                                                  // mail
+                                                                                                                  // dall'LDAP
+                            String ldapSPIDMailAttrVal = getAttrFromSet(lastUserIdentity.getAttribute("SPIDemail")); // Attuale
+                                                                                                                     // attributo
+                                                                                                                     // SPIDEmail
+                                                                                                                     // dall'LDAP
 
-                            mailChangedFlag = checkMailChangedFlag(assertionMailAttrVal, ldapSPIDMailAttrVal, ldapMailAttrVal);
+                            mailChangedFlag = checkMailChangedFlag(assertionMailAttrVal, ldapSPIDMailAttrVal,
+                                    ldapMailAttrVal);
 
                             if (mailChangedFlag.equalsIgnoreCase("true")) {
                                 oldMail = ldapMailAttr + "=" + ldapMailAttrVal;
                                 if (debug.messageEnabled())
-                                    debug.message(method + "rilevato mailChangedFlag da account pregresso, imposto oldMail = " + oldMail);
+                                    debug.message(
+                                            method + "rilevato mailChangedFlag da account pregresso, imposto oldMail = "
+                                                    + oldMail);
                             }
 
                             /* -- Verifica dell'attributo Mobile -- */
-                            String ldapMobileAttr = getCorrAttrLDAP(attrMap, "mobilePhone"); // Nome dell'attributo LDAP corrispondente a mobilePhone
-                            String ldapMobileAttrVal = getAttrFromSet(lastUserIdentity.getAttribute(ldapMobileAttr)); // Attuale attributo mobile dall'LDAP
-                            String ldapSPIDMobileAttrVal = getAttrFromSet(lastUserIdentity.getAttribute("SPIDmobile")); // Attuale attributo SPIDMobile dall'LDAP
+                            String ldapMobileAttr = getCorrAttrLDAP(attrMap, "mobilePhone"); // Nome dell'attributo LDAP
+                                                                                             // corrispondente a
+                                                                                             // mobilePhone
+                            String ldapMobileAttrVal = getAttrFromSet(lastUserIdentity.getAttribute(ldapMobileAttr)); // Attuale
+                                                                                                                      // attributo
+                                                                                                                      // mobile
+                                                                                                                      // dall'LDAP
+                            String ldapSPIDMobileAttrVal = getAttrFromSet(lastUserIdentity.getAttribute("SPIDmobile")); // Attuale
+                                                                                                                        // attributo
+                                                                                                                        // SPIDMobile
+                                                                                                                        // dall'LDAP
 
-                            mobileChangedFlag = checkMobileChangedFlag(assertionMobileAttrVal, ldapSPIDMobileAttrVal, ldapMobileAttrVal);
+                            mobileChangedFlag = checkMobileChangedFlag(assertionMobileAttrVal, ldapSPIDMobileAttrVal,
+                                    ldapMobileAttrVal);
 
                             if (mobileChangedFlag.equalsIgnoreCase("true")) {
                                 oldMobile = ldapMobileAttr + "=" + ldapMobileAttrVal;
                                 if (debug.messageEnabled())
-                                    debug.message(method + "rilevato mobileChangedFlag da account pregresso, imposto oldMobile = " + oldMobile);
+                                    debug.message(method
+                                            + "rilevato mobileChangedFlag da account pregresso, imposto oldMobile = "
+                                            + oldMobile);
                             }
                         }
                     } else { // Altrimenti imposto semplicemente newCreationFlag a true
@@ -2072,26 +2286,44 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
                         if (debug.messageEnabled())
                             debug.message(method + "nessun utente trovato, imposto newCreationFlag a true");
                     }
-                } else {  // Altrimenti verifico se impostare a "true" i flags mailChangedFlag e mobileChangedFlag
+                } else { // Altrimenti verifico se impostare a "true" i flags mailChangedFlag e
+                         // mobileChangedFlag
 
                     AMIdentity userIdentity = users.get(0);
-                    Map<String, List<String>> attrMap = getAttributeMap(hostEntityID, realm); // Mappa dei nomi degli attributi Asserzione=LDAP (presi da console AM)
+                    Map<String, List<String>> attrMap = getAttributeMap(hostEntityID, realm); // Mappa dei nomi degli
+                                                                                              // attributi
+                                                                                              // Asserzione=LDAP (presi
+                                                                                              // da console AM)
                     if (debug.messageEnabled())
                         debug.message(method + "utente " + userIdentity.getName().toString() + " trovato ");
 
                     /* -- Verifica dell'attributo Mail -- */
-                    String ldapMailAttr = getCorrAttrLDAP(attrMap, "email"); // Nome dell'attributo LDAP corrispondente a email
-                    String ldapMailAttrVal = getAttrFromSet(userIdentity.getAttribute(ldapMailAttr)); // Attuale attributo mail dall'LDAP
-                    String ldapSPIDMailAttrVal = getAttrFromSet(userIdentity.getAttribute("SPIDemail")); // Attuale attributo SPIDEmail dall'LDAP
+                    String ldapMailAttr = getCorrAttrLDAP(attrMap, "email"); // Nome dell'attributo LDAP corrispondente
+                                                                             // a email
+                    String ldapMailAttrVal = getAttrFromSet(userIdentity.getAttribute(ldapMailAttr)); // Attuale
+                                                                                                      // attributo mail
+                                                                                                      // dall'LDAP
+                    String ldapSPIDMailAttrVal = getAttrFromSet(userIdentity.getAttribute("SPIDemail")); // Attuale
+                                                                                                         // attributo
+                                                                                                         // SPIDEmail
+                                                                                                         // dall'LDAP
 
                     mailChangedFlag = checkMailChangedFlag(assertionMailAttrVal, ldapSPIDMailAttrVal, ldapMailAttrVal);
 
                     /* -- Verifica dell'attributo Mobile -- */
-                    String ldapMobileAttr = getCorrAttrLDAP(attrMap, "mobilePhone"); // Nome dell'attributo LDAP corrispondente a mobilePhone
-                    String ldapMobileAttrVal = getAttrFromSet(userIdentity.getAttribute(ldapMobileAttr)); // Attuale attributo mobile dall'LDAP
-                    String ldapSPIDMobileAttrVal = getAttrFromSet(userIdentity.getAttribute("SPIDmobile")); // Attuale attributo SPIDMobile dall'LDAP
+                    String ldapMobileAttr = getCorrAttrLDAP(attrMap, "mobilePhone"); // Nome dell'attributo LDAP
+                                                                                     // corrispondente a mobilePhone
+                    String ldapMobileAttrVal = getAttrFromSet(userIdentity.getAttribute(ldapMobileAttr)); // Attuale
+                                                                                                          // attributo
+                                                                                                          // mobile
+                                                                                                          // dall'LDAP
+                    String ldapSPIDMobileAttrVal = getAttrFromSet(userIdentity.getAttribute("SPIDmobile")); // Attuale
+                                                                                                            // attributo
+                                                                                                            // SPIDMobile
+                                                                                                            // dall'LDAP
 
-                    mobileChangedFlag = checkMobileChangedFlag(assertionMobileAttrVal, ldapSPIDMobileAttrVal, ldapMobileAttrVal);
+                    mobileChangedFlag = checkMobileChangedFlag(assertionMobileAttrVal, ldapSPIDMobileAttrVal,
+                            ldapMobileAttrVal);
                 }
             } else
                 debug.error(method + "impossibile recuperare userID da asserzione");
@@ -2112,4 +2344,3 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
     }
 
 }
-
