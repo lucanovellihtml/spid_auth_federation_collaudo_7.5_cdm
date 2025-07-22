@@ -5,7 +5,6 @@ import com.sun.identity.saml2.common.SAML2SDKUtils;
 import com.sun.identity.saml2.protocol.NameIDPolicy;
 import com.sun.identity.saml2.protocol.impl.NameIDPolicyImpl;
 import com.sun.identity.shared.xml.XMLUtils;
-import org.forgerock.openam.utils.StringUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
