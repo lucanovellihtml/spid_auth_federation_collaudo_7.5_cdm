@@ -29,11 +29,6 @@ import com.sun.identity.saml2.common.SAML2Utils;
 import com.sun.identity.saml2.jaxb.entityconfig.SPSSOConfigElement;
 import com.sun.identity.saml2.key.KeyUtil;
 
-// Modifica java 17
-/**
- * Non esiste piu' la com.sun.identity.saml2.plugins.SAML2ServiceProviderAdapter, è stata sostituita con la
- * org.forgerock.openam.saml2.plugins.SPAdapter
- */
 import org.forgerock.openam.saml2.plugins.SPAdapter;
 
 import com.sun.identity.saml2.plugins.SPIDSpAccountMapper;
@@ -43,10 +38,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class SPIDSpAdapter implements SPAdapter {
-
-    // MODIFICA JAVA 17
-    // La costante SSO_FAILED_SESSION_ERROR è stata sostituita con
-    // SPAdapter.SSO_FAILED_SESSION_ERROR
 
     /*
      * Regole di compilazione della console OpenAM:
@@ -730,7 +721,6 @@ public class SPIDSpAdapter implements SPAdapter {
 
         SPAdapter spAdapter = null;
         try {
-            // spAdapter = SAML2Utils.getSPAdapterClass(hostEntityId, realm);
             spAdapter = SAML2Utils.getSPAdapter(hostEntityId, realm);
         } catch (SAML2Exception e) {
             if (debug.messageEnabled()) {
