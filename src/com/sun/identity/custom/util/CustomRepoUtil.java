@@ -1,6 +1,5 @@
 package com.sun.identity.custom.util;
 
-import java.security.AccessController;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -14,7 +13,7 @@ import com.sun.identity.idm.AMIdentity;
 import com.sun.identity.idm.AMIdentityRepository;
 import com.sun.identity.idm.IdConstants;
 import com.sun.identity.idm.IdRepo;
-import com.sun.identity.idm.IdRepoBundle;
+import org.forgerock.am.identity.presentation.IdRepoBundle;
 import com.sun.identity.idm.IdRepoException;
 import com.sun.identity.idm.IdRepoListener;
 import com.sun.identity.idm.IdSearchControl;
@@ -50,7 +49,7 @@ public class CustomRepoUtil {
             debug = com.sun.identity.shared.debug.Debug.getInstance(DBGNAME);
         }
         try {
-            adminToken = (SSOToken) AccessController.doPrivileged(AdminTokenAction.getInstance());
+            adminToken = AdminTokenAction.getInstance().run();
             idRepoServiceConfigManager = new ServiceConfigManager(adminToken, IdConstants.REPO_SERVICE, "1.0");
         } catch (SSOException ssoex) {
             debug.error(CLASSNAME + ".static:", ssoex);
@@ -76,7 +75,7 @@ public class CustomRepoUtil {
         List<AMIdentity> users = new ArrayList<AMIdentity>();
 
         if (adminToken == null)
-            adminToken = (SSOToken) AccessController.doPrivileged(AdminTokenAction.getInstance());
+            adminToken = AdminTokenAction.getInstance().run();
         AMIdentityRepository idRepo;
         try {
             idRepo = new AMIdentityRepository(realm, adminToken);
@@ -121,7 +120,7 @@ public class CustomRepoUtil {
             return null;
 
         if (adminToken == null)
-            adminToken = (SSOToken) AccessController.doPrivileged(AdminTokenAction.getInstance());
+            adminToken = AdminTokenAction.getInstance().run();
         AMIdentityRepository idRepo;
         try {
             idRepo = new AMIdentityRepository(realm, adminToken);
@@ -179,7 +178,7 @@ public class CustomRepoUtil {
             return null;
 
         if (adminToken == null)
-            adminToken = (SSOToken) AccessController.doPrivileged(AdminTokenAction.getInstance());
+            adminToken = AdminTokenAction.getInstance().run();
         AMIdentityRepository idRepo;
         try {
             idRepo = new AMIdentityRepository(realm, adminToken);
@@ -341,7 +340,7 @@ public class CustomRepoUtil {
         String method = "[deleteUser]:: ";
 
         if (adminToken == null)
-            adminToken = (SSOToken) AccessController.doPrivileged(AdminTokenAction.getInstance());
+            adminToken = AdminTokenAction.getInstance().run();
 
         try {
             if (adminToken != null) {
@@ -378,7 +377,7 @@ public class CustomRepoUtil {
         String method = "[deleteUserGroups]:: ";
 
         if (adminToken == null)
-            adminToken = (SSOToken) AccessController.doPrivileged(AdminTokenAction.getInstance());
+            adminToken = AdminTokenAction.getInstance().run();
 
         try {
             if (adminToken != null) {
@@ -410,7 +409,7 @@ public class CustomRepoUtil {
         String method = "[getGroupsUsers]:: ";
 
         if (adminToken == null)
-            adminToken = (SSOToken) AccessController.doPrivileged(AdminTokenAction.getInstance());
+            adminToken = AdminTokenAction.getInstance().run();
 
         try {
             if (adminToken != null) {
@@ -454,7 +453,7 @@ public class CustomRepoUtil {
             debug.message(method + "parametri: delete[" + delete + "]");
         }
         if (adminToken == null)
-            adminToken = (SSOToken) AccessController.doPrivileged(AdminTokenAction.getInstance());
+            adminToken = AdminTokenAction.getInstance().run();
 
         try {
             if (adminToken != null) {
@@ -515,7 +514,7 @@ public class CustomRepoUtil {
             debug.message(method + "parametri: usrIdentity[" + usrIdentity + "]");
         }
         if (adminToken == null)
-            adminToken = (SSOToken) AccessController.doPrivileged(AdminTokenAction.getInstance());
+            adminToken = AdminTokenAction.getInstance().run();
 
         try {
             // aggiorna l'utente
@@ -612,7 +611,7 @@ public class CustomRepoUtil {
         }
 
         if (adminToken == null)
-            adminToken = (SSOToken) AccessController.doPrivileged(AdminTokenAction.getInstance());
+            adminToken = AdminTokenAction.getInstance().run();
 
         try {
             // crea l'utente
@@ -642,23 +641,14 @@ public class CustomRepoUtil {
                     }
                 }
 
-                if (baseDN != null || usrContainerName != null) {
-
-                    IdRepo idRepo = getIdRepo(realm, null, baseDN, usrContainerName);
-                    String ident = idRepo.create(adminToken, IdType.USER, name, attrs);
-
+                if (adminToken != null) {
+                    AMIdentityRepository idRepo = new AMIdentityRepository(realm, adminToken);
+                    AMIdentity ident = idRepo.createIdentity(IdType.USER, name, attrs);
                     if (debug.messageEnabled())
-                        debug.message(method + "ident: name[" + name + "] ident: " + ident);
+                        debug.message(method + "ident: name[" + name + "] isExists: " + ident.isExists());
                     return true;
-                } else {
-                    if (adminToken != null) {
-                        AMIdentityRepository idRepo = new AMIdentityRepository(realm, adminToken);
-                        AMIdentity ident = idRepo.createIdentity(IdType.USER, name, attrs);
-                        if (debug.messageEnabled())
-                            debug.message(method + "ident: name[" + name + "] isExists: " + ident.isExists());
-                        return true;
-                    }
                 }
+
             }
         } catch (SSOException e) {
             debug.error(method + "SSOException: ", e);
@@ -680,7 +670,7 @@ public class CustomRepoUtil {
         }
 
         if (adminToken == null)
-            adminToken = (SSOToken) AccessController.doPrivileged(AdminTokenAction.getInstance());
+            adminToken = AdminTokenAction.getInstance().run();
 
         try {
             if (adminToken != null) {
@@ -768,7 +758,7 @@ public class CustomRepoUtil {
             debug.message(method + "parametri: usrContainerName[" + usrContainerName + "]");
         }
         if (adminToken == null)
-            adminToken = (SSOToken) AccessController.doPrivileged(AdminTokenAction.getInstance());
+            adminToken = AdminTokenAction.getInstance().run();
 
         try {
             if (adminToken != null) {
@@ -811,7 +801,7 @@ public class CustomRepoUtil {
                         if (idRepo != null) {
                             AMIdentity ident = idRepo.createIdentity(IdType.USER, name, attrs);
                             if (debug.messageEnabled())
-                                debug.message(method + " identita creata [" + ident.getDN() + "]");
+                                debug.message(method + " identita creata [" + ident.getName() + "]");
                         }
                     }
                     if (debug.messageEnabled())
@@ -838,7 +828,7 @@ public class CustomRepoUtil {
                     + "] e attrNames[" + attrNames + "] ------------ ");
 
         if (adminToken == null)
-            adminToken = (SSOToken) AccessController.doPrivileged(AdminTokenAction.getInstance());
+            adminToken = AdminTokenAction.getInstance().run();
 
         Set<String> attributeValue = new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
         attributeValue.add(attrNames);
@@ -893,7 +883,7 @@ public class CustomRepoUtil {
             try {
                 thisClass = Thread.currentThread().getContextClassLoader()
                         .loadClass(className);
-                answer = (IdRepo) thisClass.newInstance();
+                answer = (IdRepo) thisClass.getDeclaredConstructor().newInstance();
             } catch (Throwable ex) {
                 debug.error(method + " OrgName: " + orgName + " ConfigMap: " + configMap, ex);
                 throw (new IdRepoException(ex.getMessage()));
