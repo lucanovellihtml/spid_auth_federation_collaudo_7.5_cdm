@@ -34,8 +34,9 @@ import org.forgerock.openam.saml2.plugins.SPAdapter;
 import com.sun.identity.saml2.plugins.SPIDSpAccountMapper;
 import com.sun.identity.saml2.plugins.SPIDAziendeSpAccountMapper;
 import com.sun.identity.saml2.protocol.*;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SPIDSpAdapter implements SPAdapter {
 
@@ -62,14 +63,13 @@ public class SPIDSpAdapter implements SPAdapter {
      * - "FIRSTLOGIN_LANDINGPAGE": pagina per primo accesso
      */
 
-    private static com.sun.identity.shared.debug.Debug debug = null;
+    private static Logger logger = null;
     private final static String DBGNAME = "SPIDSpAdapter";
     // private static final String TINSUFF = "TINIT-";
 
     // Istanza Logger di log4j 2, usata per loggare le transazioni SAML su file
     // dedicato, properties nel file
     // /opt/tomcat/webapps/openam/WEB-INF/classes/log4j2.xml
-    public static final Logger logger = LogManager.getLogger("LogToRollingFileSPID");
     public String transactionID = null;
     public boolean tracciatureFS = true;
 
@@ -167,11 +167,11 @@ public class SPIDSpAdapter implements SPAdapter {
      */
     @SuppressWarnings("rawtypes")
     public void initialize(Map initParams) {
-        if (debug == null) {
-            debug = com.sun.identity.shared.debug.Debug.getInstance(DBGNAME);
+        if (logger == null) {
+            logger = LoggerFactory.getLogger(SPIDSpAdapter.class);
         }
-        if (debug.messageEnabled())
-            debug.message(" ... initialize ... ");
+
+        logger.debug(" ... initialize ... ");
 
         // default false
         if (initParams.get(TRACCIATURE_KO) != null)
@@ -185,11 +185,9 @@ public class SPIDSpAdapter implements SPAdapter {
             redirectToGoto = Boolean.parseBoolean((String) initParams.get(REDIRECT_TO_GOTO));
         }
 
-        if (debug.messageEnabled()) {
-            debug.message("tracciatureKo: " + tracciatureKo);
-            debug.message("redirectToFirstLogin: " + redirectToFirstLogin);
-            debug.message("redirectToGoto: " + redirectToGoto);
-        }
+        logger.debug("tracciatureKo: " + tracciatureKo);
+        logger.debug("redirectToFirstLogin: " + redirectToFirstLogin);
+        logger.debug("redirectToGoto: " + redirectToGoto);
 
         if (initParams.get(PROP_FIRSTLOGIN_ATTRIBUTE) != null)
             FIRSTLOGIN_ATTRIBUTE = (String) initParams.get(PROP_FIRSTLOGIN_ATTRIBUTE);
@@ -203,11 +201,11 @@ public class SPIDSpAdapter implements SPAdapter {
 
         userContainer = SystemProperties.get(GLOBAL_PROP_CREATEUSER_BASEDN);
         if (userContainer == null || userContainer.trim().equals("")) {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_CREATEUSER_BASEDN + " undefined.");
+
+            logger.debug(GLOBAL_PROP_CREATEUSER_BASEDN + " undefined.");
         } else {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_CREATEUSER_BASEDN + " value: " + userContainer);
+
+            logger.debug(GLOBAL_PROP_CREATEUSER_BASEDN + " value: " + userContainer);
         }
 
         if (initParams.get(HEADER_VARS_ATTR) != null)
@@ -241,8 +239,8 @@ public class SPIDSpAdapter implements SPAdapter {
             AuthnRequest authnRequest)
             throws SAML2Exception {
         String method = "[preSingleSignOnRequest]:: ";
-        if (debug.messageEnabled())
-            debug.message(method + "inizio ... ");
+
+        logger.debug(method + "inizio ... ");
 
         if (authnRequest != null) {
             authnRequest.setIsPassive(null); // add AM 6.5
@@ -275,15 +273,15 @@ public class SPIDSpAdapter implements SPAdapter {
                 authnRequest.setExtensions(extensions);
 
                 if (extensions != null) {
-                    if (debug.messageEnabled()) {
-                        debug.message("extensions: " + extensions.getAny());
-                        debug.message("authnRequest.getExtensions.getAny(): " + authnRequest.getExtensions().getAny());
+                    {
+                        logger.debug("extensions: " + extensions.getAny());
+                        logger.debug("authnRequest.getExtensions.getAny(): " + authnRequest.getExtensions().getAny());
                         // LOG PER STAMPARE INDEX DELLA SAML REQUEST
-                        debug.message("authnRequest.getAttributeConsumingServiceIndex(): "
+                        logger.debug("authnRequest.getAttributeConsumingServiceIndex(): "
                                 + authnRequest.getAttributeConsumingServiceIndex());
                     }
                 } else {
-                    debug.error("extensions null");
+                    logger.error("extensions null");
                 }
             }
         }
@@ -335,8 +333,8 @@ public class SPIDSpAdapter implements SPAdapter {
             String profile)
             throws SAML2Exception {
         String method = "[preSingleSignOnProcess]:: ";
-        if (debug.messageEnabled())
-            debug.message(method + "inizio ... ");
+
+        logger.debug(method + "inizio ... ");
 
         // Recupero i flags per postLogin
         HashMap<String, String> postLoginFlags = new HashMap<String, String>();
@@ -385,14 +383,13 @@ public class SPIDSpAdapter implements SPAdapter {
         // Flag aggiunto per la gestione del flusso toponomastica
         addressChangedFlag = postLoginFlags.get("addressChangedFlag");
 
-        if (debug.messageEnabled())
-            debug.message(method + "recuperati postLoginFlags ");
+        logger.debug(method + "recuperati postLoginFlags ");
 
         if (tracciatureFS) {
             if (authnRequest.getID() != null) {
                 transactionID = authnRequest.getID();
             } else {
-                debug.warning(method + "Impossibile recuperare Authn_ID dalla request.");
+                logger.warn(method + "Impossibile recuperare Authn_ID dalla request.");
                 transactionID = UUID.randomUUID().toString();
             }
             logger.info("| [transactionID= " + transactionID + "] | authnRequest= "
@@ -436,8 +433,8 @@ public class SPIDSpAdapter implements SPAdapter {
             boolean isFederation)
             throws SAML2Exception {
         String method = "[postSingleSignOnSuccess]:: ";
-        if (debug.messageEnabled())
-            debug.message(method + "inizio");
+
+        logger.debug(method + "inizio");
 
         // GET KEY ALTERNATIVA
         if (recipientPrivateKey == null) {
@@ -446,20 +443,18 @@ public class SPIDSpAdapter implements SPAdapter {
                 if (spssoconfig != null)
                     recipientPrivateKey = (Set<PrivateKey>) KeyUtil.getDecryptionKeys(spssoconfig);
                 else
-                    debug.error("Errore GET KEY ALTERNATIVA: spssoconfig NULL ");
+                    logger.error("Errore GET KEY ALTERNATIVA: spssoconfig NULL ");
                 // nameID = encryptedID.decrypt(decryptionKey);
             } catch (Exception e) {
-                debug.error("Errore GET KEY ALTERNATIVA: ", e);
+                logger.error("Errore GET KEY ALTERNATIVA: ", e);
                 e.printStackTrace();
             }
         }
 
-        if (debug.messageEnabled()) {
-            debug.message("tracciatureFS: " + tracciatureFS);
-            debug.message("tracciatureKo: " + tracciatureKo);
-            debug.message("redirectToFirstLogin: " + redirectToFirstLogin);
-            debug.message("redirectToGoto: " + redirectToGoto);
-        }
+        logger.debug("tracciatureFS: " + tracciatureFS);
+        logger.debug("tracciatureKo: " + tracciatureKo);
+        logger.debug("redirectToFirstLogin: " + redirectToFirstLogin);
+        logger.debug("redirectToGoto: " + redirectToGoto);
 
         Assertion assertion = getAssertionSpid(ssoResponse);
         if (assertion == null) {
@@ -499,21 +494,21 @@ public class SPIDSpAdapter implements SPAdapter {
         if (oldMail != null) {
             String[] arrayOldMail = oldMail.split("=");
             userAttributeMap.put(arrayOldMail[0], Arrays.asList(arrayOldMail[1]));
-            if (debug.messageEnabled())
-                debug.message(method + "oldMail = " + oldMail);
+
+            logger.debug(method + "oldMail = " + oldMail);
         }
         if (oldMobile != null) {
             String[] arrayOldMobile = oldMobile.split("=");
             userAttributeMap.put(arrayOldMobile[0], Arrays.asList(arrayOldMobile[1]));
-            if (debug.messageEnabled())
-                debug.message(method + "oldMobile = " + oldMobile);
+
+            logger.debug(method + "oldMobile = " + oldMobile);
         }
 
         // Eseguo update utente solo se oldMail o oldMobile sono stati rilevati
         try {
             if (userAttributeMap.size() > 0 && ssoToken != null && ssoToken.getPrincipal().getName() != null) {
-                if (debug.messageEnabled())
-                    debug.message(method + "userAttributeMap = " + userAttributeMap);
+
+                logger.debug(method + "userAttributeMap = " + userAttributeMap);
 
                 String accountName = null;
                 String[] accountNameArray = ssoToken.getPrincipal().getName().split(",");
@@ -525,33 +520,31 @@ public class SPIDSpAdapter implements SPAdapter {
 
                     List<AMIdentity> users = repoUtil.getUserStoreIdentity(accountName, realm);
 
-                    if (debug.messageEnabled()) {
-                        debug.message(method + "UTENZA[" + accountName + "] e realm[" + realm + "]");
-                        debug.message(method + "UTENZA[" + users + "]");
-                    }
+                    logger.debug(method + "UTENZA[" + accountName + "] e realm[" + realm + "]");
+                    logger.debug(method + "UTENZA[" + users + "]");
 
                     if (users != null && !users.isEmpty()) {
                         if (users.size() > 1) {
-                            debug.message(method + "trovate piu occorrenze sullo UserStore per name[" + accountName
+                            logger.debug(method + "trovate piu occorrenze sullo UserStore per name[" + accountName
                                     + "] e realm[" + realm + "]");
                         } else {
                             AMIdentity user = users.get(0);
                             if (user != null) {
                                 repoUtil.updateSpidUsers(user, userAttributeMap);
-                                if (debug.messageEnabled())
-                                    debug.message(method + "rilevato utente " + accountName
-                                            + " LDAP da aggiornare con i seguenti attributi: " + userAttributeMap);
+
+                                logger.debug(method + "rilevato utente " + accountName
+                                        + " LDAP da aggiornare con i seguenti attributi: " + userAttributeMap);
                             }
                         }
                     } else {
-                        debug.error(method + "utente " + accountName + " non trovato");
+                        logger.error(method + "utente " + accountName + " non trovato");
                     }
                 } else {
-                    debug.error(method + "accountName NULL");
+                    logger.error(method + "accountName NULL");
                 }
             }
         } catch (Exception ex) {
-            debug.error(method
+            logger.error(method
                     + " Eccezione durante l'update del nuovo utente con mail/mobile dell'utente SPID pregresso: " + ex);
         }
 
@@ -573,18 +566,18 @@ public class SPIDSpAdapter implements SPAdapter {
                     // authnCtx= authnCtx.substring(1, authnCtx.length()-1);
                     authnCtx = authnCtx.substring(1, authnCtx.length());
                     String[] SpidLevel = authnCtx.split(":");
-                    if (debug.messageEnabled())
-                        debug.message(method + "SpidLevel[SpidLevel.length-1] : " + SpidLevel[SpidLevel.length - 1]);
+
+                    logger.debug(method + "SpidLevel[SpidLevel.length-1] : " + SpidLevel[SpidLevel.length - 1]);
                     String livelloSPID = SpidLevel[SpidLevel.length - 1]
                             .substring(SpidLevel[SpidLevel.length - 1].indexOf("www"));
                     ssoToken.setProperty("HTTP_SPID_LEVEL", livelloSPID);
-                    if (debug.messageEnabled())
-                        debug.message(method + "HTTP_SPID_LEVEL: " + livelloSPID);
+
+                    logger.debug(method + "HTTP_SPID_LEVEL: " + livelloSPID);
                 } else
-                    debug.error(method
+                    logger.error(method
                             + "Errore impostazione variabili header HTTP_SPID_LEVEL: Errore in lettura Authn context");
             } catch (SSOException e1) {
-                debug.error(method + "Errore impostazione variabili header HTTP_SPID_LEVEL", e1);
+                logger.error(method + "Errore impostazione variabili header HTTP_SPID_LEVEL", e1);
                 SAML2Exception se = new SAML2Exception("SSO_FAILED_SESSION_ERROR");
                 invokeSPAdapterForSSOFailure(hostedEntityID, realm, request, response,
                         authnRequest, ssoResponse, profile, SPAdapter.SSO_FAILED_SESSION_ERROR, se);
@@ -597,11 +590,10 @@ public class SPIDSpAdapter implements SPAdapter {
         try {
             ssoToken.setProperty("HTTP_Iv-newCreation", newCreationFlag);
 
-            if (debug.messageEnabled())
-                debug.message(method + "HTTP_Iv-newCreation: " + newCreationFlag);
+            logger.debug(method + "HTTP_Iv-newCreation: " + newCreationFlag);
 
         } catch (SSOException e) {
-            debug.error(method + "Errore impostazione variabili header HTTP_Iv-newCreation", e);
+            logger.error(method + "Errore impostazione variabili header HTTP_Iv-newCreation", e);
             SAML2Exception se = new SAML2Exception("SSO_FAILED_SESSION_ERROR");
             invokeSPAdapterForSSOFailure(hostedEntityID, realm, request, response,
                     authnRequest, ssoResponse, profile, SPAdapter.SSO_FAILED_SESSION_ERROR, se);
@@ -617,11 +609,10 @@ public class SPIDSpAdapter implements SPAdapter {
         try {
             ssoToken.setProperty("HTTP_spidmobilechanged", mobileChangedFlag);
 
-            if (debug.messageEnabled())
-                debug.message(method + "HTTP_spidmobilechanged: " + mobileChangedFlag);
+            logger.debug(method + "HTTP_spidmobilechanged: " + mobileChangedFlag);
 
         } catch (SSOException e) {
-            debug.error(method + "Errore impostazione variabili header HTTP_spidmobilechanged", e);
+            logger.error(method + "Errore impostazione variabili header HTTP_spidmobilechanged", e);
             SAML2Exception se = new SAML2Exception("SSO_FAILED_SESSION_ERROR");
             invokeSPAdapterForSSOFailure(hostedEntityID, realm, request, response,
                     authnRequest, ssoResponse, profile, SPAdapter.SSO_FAILED_SESSION_ERROR, se);
@@ -635,11 +626,10 @@ public class SPIDSpAdapter implements SPAdapter {
         try {
             ssoToken.setProperty("HTTP_spidaddresschanged", addressChangedFlag);
 
-            if (debug.messageEnabled())
-                debug.message(method + "HTTP_spidaddresschanged: " + addressChangedFlag);
+            logger.debug(method + "HTTP_spidaddresschanged: " + addressChangedFlag);
 
         } catch (SSOException e) {
-            debug.error(method + "Errore impostazione variabili header HTTP_spidaddresschanged", e);
+            logger.error(method + "Errore impostazione variabili header HTTP_spidaddresschanged", e);
             SAML2Exception se = new SAML2Exception("SSO_FAILED_SESSION_ERROR");
             invokeSPAdapterForSSOFailure(hostedEntityID, realm, request, response,
                     authnRequest, ssoResponse, profile, SPAdapter.SSO_FAILED_SESSION_ERROR, se);
@@ -655,11 +645,10 @@ public class SPIDSpAdapter implements SPAdapter {
         try {
             ssoToken.setProperty("HTTP_spidemailchanged", mailChangedFlag);
 
-            if (debug.messageEnabled())
-                debug.message(method + "HTTP_spidemailchanged: " + mailChangedFlag);
+            logger.debug(method + "HTTP_spidemailchanged: " + mailChangedFlag);
 
         } catch (SSOException e) {
-            debug.error(method + "Errore impostazione variabili header HTTP_spidemailchanged", e);
+            logger.error(method + "Errore impostazione variabili header HTTP_spidemailchanged", e);
             SAML2Exception se = new SAML2Exception("SSO_FAILED_SESSION_ERROR");
             invokeSPAdapterForSSOFailure(hostedEntityID, realm, request, response,
                     authnRequest, ssoResponse, profile, SPAdapter.SSO_FAILED_SESSION_ERROR, se);
@@ -671,11 +660,10 @@ public class SPIDSpAdapter implements SPAdapter {
         try {
             ssoToken.setProperty("HTTP_Iv-newCreationknown", newCreationknownFlag);
 
-            if (debug.messageEnabled())
-                debug.message(method + "HTTP_Iv-newCreationknown: " + newCreationknownFlag);
+            logger.debug(method + "HTTP_Iv-newCreationknown: " + newCreationknownFlag);
 
         } catch (SSOException e) {
-            debug.error(method + "Errore impostazione variabili header HTTP_Iv-newCreationknown", e);
+            logger.error(method + "Errore impostazione variabili header HTTP_Iv-newCreationknown", e);
             SAML2Exception se = new SAML2Exception("SSO_FAILED_SESSION_ERROR");
             invokeSPAdapterForSSOFailure(hostedEntityID, realm, request, response,
                     authnRequest, ssoResponse, profile, SPAdapter.SSO_FAILED_SESSION_ERROR, se);
@@ -686,17 +674,17 @@ public class SPIDSpAdapter implements SPAdapter {
         // gestione redirect alla pagina configurata da console ...
         if (redirectToFirstLogin) {
             boolean isFirstLogin = isFirstLogin(ssoToken, realm);
-            if (debug.messageEnabled()) {
-                debug.message(method + "redirect alla pagina di PRIMO ACCESSO: " + redirectToFirstLogin);
-                debug.message(method + "redirect alla pagina - isFirstLogin: " + isFirstLogin);
-            }
+
+            logger.debug(method + "redirect alla pagina di PRIMO ACCESSO: " + redirectToFirstLogin);
+            logger.debug(method + "redirect alla pagina - isFirstLogin: " + isFirstLogin);
+
             if (isFirstLogin)
                 return redirectToFirstLogin(ssoToken, realm, response);
         }
 
         // gestione redirect alla pagina chiamante ... probabilmente non serve
-        if (debug.messageEnabled())
-            debug.message(method + "redirect alla pagina chiamante: " + redirectToGoto);
+
+        logger.debug(method + "redirect alla pagina chiamante: " + redirectToGoto);
         if (redirectToGoto && REDIRECT_TO != null) {
             return sendRedirect(response, REDIRECT_TO, null);
         }
@@ -716,16 +704,16 @@ public class SPIDSpAdapter implements SPAdapter {
             int errorCode,
             SAML2Exception se) {
         String method = "[invokeSPAdapterForSSOFailure]:: ";
-        if (debug.messageEnabled())
-            debug.message(method + "inizio ... ");
+
+        logger.debug(method + "inizio ... ");
 
         SPAdapter spAdapter = null;
         try {
             spAdapter = SAML2Utils.getSPAdapter(hostEntityId, realm);
         } catch (SAML2Exception e) {
-            if (debug.messageEnabled()) {
-                debug.message(method, e);
-            }
+
+            logger.debug(method, e);
+
         }
         if (spAdapter != null) {
             boolean redirected = spAdapter.postSingleSignOnFailure(
@@ -765,12 +753,11 @@ public class SPIDSpAdapter implements SPAdapter {
             int failureCode) {
 
         String method = "[postSingleSignOnFailure]:: ";
-        if (debug.messageEnabled()) {
-            debug.message(method + "inizio");
-            debug.message(method + "failureCode: " + failureCode);
-            debug.message(
-                    method + "ERROR_PAGE_URL:" + SystemConfigurationUtil.getProperty(SAMLConstants.ERROR_PAGE_URL));
-        }
+
+        logger.debug(method + "inizio");
+        logger.debug(method + "failureCode: " + failureCode);
+        logger.debug(
+                method + "ERROR_PAGE_URL:" + SystemConfigurationUtil.getProperty(SAMLConstants.ERROR_PAGE_URL));
 
         Assertion assertion = getAssertionSpid(ssoResponse);
 
@@ -792,11 +779,11 @@ public class SPIDSpAdapter implements SPAdapter {
         if (siteToRedirect == null || siteToRedirect.trim().equals("")) {
             // se non impostata la variabile globale allora va sul context path come prima
             siteToRedirect = request.getContextPath();
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_SITE_TO_REDIRECT + " undefined: use default value context path");
+
+            logger.debug(GLOBAL_PROP_SITE_TO_REDIRECT + " undefined: use default value context path");
         } else {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_SITE_TO_REDIRECT + " value: " + siteToRedirect);
+
+            logger.debug(GLOBAL_PROP_SITE_TO_REDIRECT + " value: " + siteToRedirect);
         }
         StringBuffer site = new StringBuffer(siteToRedirect);
         // modifica per esposizione openMA /fed - FINE
@@ -812,8 +799,7 @@ public class SPIDSpAdapter implements SPAdapter {
         response.setStatus(HttpServletResponse.SC_MOVED_TEMPORARILY);
         response.setHeader("Location", site.toString());
 
-        if (debug.messageEnabled())
-            debug.message(method + "redirect to ... " + site.toString());
+        logger.debug(method + "redirect to ... " + site.toString());
 
         return true;
     }
@@ -909,8 +895,8 @@ public class SPIDSpAdapter implements SPAdapter {
             throws SAML2Exception {
         // TODO - da aggiungere per Single Logout SPID - da testare
         String method = "[preSingleLogoutProcess]:: ";
-        if (debug.messageEnabled())
-            debug.message(method + "inizio ... ");
+
+        logger.debug(method + "inizio ... ");
 
         if (logoutRequest != null) {
             if (logoutRequest.getIssuer() != null) {
@@ -962,16 +948,16 @@ public class SPIDSpAdapter implements SPAdapter {
             result = result.trim();
         }
         if (result.equals("")) {
-            if (debug.messageEnabled()) {
-                debug.message(method + " Conf " + propertyName + " undefined.");
-                // debug.error(method + " You need to define these Advanced Properties: " +
-                // ADVANCED_ATTRIBUTE + "\n "
-                // + ADVANCED_ATTRIBUTE_VALUE + "\n " + ADVANCED_LANDINGPAGE );
-            }
+
+            logger.debug(method + " Conf " + propertyName + " undefined.");
+            // logger.error(method + " You need to define these Advanced Properties: " +
+            // ADVANCED_ATTRIBUTE + "\n "
+            // + ADVANCED_ATTRIBUTE_VALUE + "\n " + ADVANCED_LANDINGPAGE );
+
         } else {
-            if (debug.messageEnabled()) {
-                debug.message(method + " Conf " + propertyName + "=" + result);
-            }
+
+            logger.debug(method + " Conf " + propertyName + "=" + result);
+
         }
         return result;
     }
@@ -984,7 +970,7 @@ public class SPIDSpAdapter implements SPAdapter {
 
         if (queryString != null) {
             StringBuffer url = new StringBuffer(urlToRedirect);
-            // debug.message(method + "PRE url: " + url.toString());
+            // logger.debug(method + "PRE url: " + url.toString());
             if (!url.toString().endsWith("?") && !url.toString().contains("?"))
                 url.append("?");
             for (Entry<String, String> ele : queryString.entrySet()) {
@@ -1002,8 +988,7 @@ public class SPIDSpAdapter implements SPAdapter {
         response.setStatus(HttpServletResponse.SC_MOVED_TEMPORARILY);
         response.setHeader("Location", urlToRedirect.toString());
 
-        if (debug.messageEnabled())
-            debug.message(method + "redirect to ... " + urlToRedirect);
+        logger.debug(method + "redirect to ... " + urlToRedirect);
 
         return true;
     }
@@ -1012,9 +997,8 @@ public class SPIDSpAdapter implements SPAdapter {
         String method = "[buildHttpHeaderVar]:: ";
 
         if (httpParams != null || value != null) {
-            if (debug.messageEnabled()) {
-                debug.message(method + "httpParams: " + httpParams);
-            }
+
+            logger.debug(method + "httpParams: " + httpParams);
 
             if (httpParams.indexOf(";") != -1) {
                 String[] array_parametri = httpParams.split(";");
@@ -1027,26 +1011,25 @@ public class SPIDSpAdapter implements SPAdapter {
                             // String[] parametro = array_parametri[i].split(",");
                             // if( parametro!=null && parametro[0]!=null && parametro[1]!=null ){
                             // httpHeaderVarMap.put(parametro[0], parametro[1]);
-                            // if (debug.messageEnabled()){
-                            // debug.message( method + "parametro[0]: " + parametro[0] );
-                            // debug.message( method + "parametro[1]: " + parametro[1] );
-                            // }
+                            // logger.debug( method + "parametro[0]: " + parametro[0] );
+                            // logger.debug( method + "parametro[1]: " + parametro[1] );
+                            //
                             // }
                         } else
-                            debug.error(method + "errore valorizzazioni HEADER. httpParams[" + httpParams + "]");
+                            logger.error(method + "errore valorizzazioni HEADER. httpParams[" + httpParams + "]");
                     }
                 }
             } else {
                 httpHeaderVarMap.put(httpParams, value);
             }
         } else
-            debug.message(method + "valorizzazioni HEADER: parametri in input nulli");
+            logger.debug(method + "valorizzazioni HEADER: parametri in input nulli");
     }
 
     private Assertion getAssertionSpid(Response ssoResponse) {
         String method = "[getAssertionSpid]:: ";
-        if (debug.messageEnabled())
-            debug.message(method + "inizio ... ");
+
+        logger.debug(method + "inizio ... ");
 
         // GET ASSERTION
         List<?> asserts;
@@ -1056,8 +1039,8 @@ public class SPIDSpAdapter implements SPAdapter {
             asserts = ssoResponse.getAssertion();
             assertion = (Assertion) asserts.get(0);
         } catch (Exception e) {
-            if (debug.messageEnabled())
-                debug.message(method + "Assertion cifrata!!!");
+
+            logger.debug(method + "Assertion cifrata!!!");
             try {
                 // ALLORA E\' CIFRATA
                 asserts = ssoResponse.getEncryptedAssertion();
@@ -1065,19 +1048,19 @@ public class SPIDSpAdapter implements SPAdapter {
                     encryptedAssertion = (EncryptedAssertion) asserts.get(0);
                     assertion = encryptedAssertion.decrypt(recipientPrivateKey);
                 } else {
-                    debug.error(method + "ID [" + ssoResponse.getID() + "] Issuer [" + ssoResponse.getIssuer()
+                    logger.error(method + "ID [" + ssoResponse.getID() + "] Issuer [" + ssoResponse.getIssuer()
                             + "] Message: ERRORE nella decriptazione dell'asserzione: asserts nulla.");
                     return null;
                 }
             } catch (Exception ex) {
-                debug.error(method + "ID [" + ssoResponse.getID() + "] Issuer [" + ssoResponse.getIssuer()
+                logger.error(method + "ID [" + ssoResponse.getID() + "] Issuer [" + ssoResponse.getIssuer()
                         + "] Message: ERRORE nella decriptazione dell'asserzione.");
                 ex.printStackTrace();
                 return null;
             }
         }
-        if (debug.messageEnabled())
-            debug.message(method + " ... fine");
+
+        logger.debug(method + " ... fine");
         return assertion;
     }
 
@@ -1086,8 +1069,8 @@ public class SPIDSpAdapter implements SPAdapter {
         // E' presente una loggata al di fuori di questo metodo, nel metodo
         // preSingleSignOnProcess, dove logga solo l'intera authnRequest
         String method = "[writeRecordFS]:: ";
-        if (debug.messageEnabled())
-            debug.message(method + "inizio ... ");
+
+        logger.debug(method + "inizio ... ");
 
         /*
          * TRACCIATURE SERVICE PROVIDER
@@ -1108,25 +1091,25 @@ public class SPIDSpAdapter implements SPAdapter {
         try {
             if (authnRequest != null) {
                 if (authnRequest.getID() != null) {
-                    if (debug.messageEnabled())
-                        debug.message(method + "AuthnReq_ID: " + authnRequest.getID());
+
+                    logger.debug(method + "AuthnReq_ID: " + authnRequest.getID());
                     log_value.put("AuthnReq_ID", authnRequest.getID()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "AuthnReq_ID: null ... ");
+
+                    logger.debug(method + "AuthnReq_ID: null ... ");
                 }
 
                 if (authnRequest.getIssueInstant() != null) {
-                    if (debug.messageEnabled())
-                        debug.message(method + "AuthnReq_IssueInstant: " + authnRequest.getIssueInstant().toString());
+
+                    logger.debug(method + "AuthnReq_IssueInstant: " + authnRequest.getIssueInstant().toString());
                     log_value.put("AuthnReq_IssueInstant", new Timestamp(authnRequest.getIssueInstant().getTime())); // Timestamp
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "AuthnReq_IssueInstant: null ... ");
+
+                    logger.debug(method + "AuthnReq_IssueInstant: null ... ");
                 }
             } else {
-                if (debug.messageEnabled())
-                    debug.message(method + "authnRequest is null");
+
+                logger.debug(method + "authnRequest is null");
             }
 
             if (ssoResponse != null) {
@@ -1135,53 +1118,53 @@ public class SPIDSpAdapter implements SPAdapter {
                     logger.info("| [transactionID= " + transactionID + "] | Response= "
                             + ssoResponse.toXMLString().replaceAll("(\\r|\\n)", ""));
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Impossibile stampare la response");
+
+                    logger.debug(method + "Impossibile stampare la response");
                 }
 
                 if (ssoResponse.getInResponseTo() != null) {
-                    if (debug.messageEnabled())
-                        debug.message(method + "InResponseTo: " + ssoResponse.getInResponseTo());
+
+                    logger.debug(method + "InResponseTo: " + ssoResponse.getInResponseTo());
                     log_value.put("InResponseTo", ssoResponse.getInResponseTo()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "InResponseTo: null ... ");
+
+                    logger.debug(method + "InResponseTo: null ... ");
                 }
 
                 if (ssoResponse.getID() != null) {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Resp_ID: " + ssoResponse.getID());
+
+                    logger.debug(method + "Resp_ID: " + ssoResponse.getID());
                     log_value.put("Resp_ID", ssoResponse.getID()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Resp_ID: null ... ");
+
+                    logger.debug(method + "Resp_ID: null ... ");
                 }
 
                 if (ssoResponse.getIssueInstant() != null) {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Resp_IssueInstant: " + ssoResponse.getIssueInstant().toString());
+
+                    logger.debug(method + "Resp_IssueInstant: " + ssoResponse.getIssueInstant().toString());
                     log_value.put("Resp_IssueInstant", new Timestamp(ssoResponse.getIssueInstant().getTime())); // Date
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Resp_IssueInstant: null ... ");
+
+                    logger.debug(method + "Resp_IssueInstant: null ... ");
                 }
 
                 Status status = ssoResponse.getStatus();
                 if (status != null && status.getStatusCode() != null) {
                     log_value.put("StatusCode", status.getStatusCode().getValue()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "StatusCode: null ... ");
+
+                    logger.debug(method + "StatusCode: null ... ");
                 }
                 if (status != null && status.getStatusMessage() != null) {
                     log_value.put("StatusMessage", status.getStatusMessage()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "StatusMessage: null ... ");
+
+                    logger.debug(method + "StatusMessage: null ... ");
                 }
             } else {
-                if (debug.messageEnabled())
-                    debug.message(method + "ssoResponse is null");
+
+                logger.debug(method + "ssoResponse is null");
             }
 
             if (assertion != null) {
@@ -1201,24 +1184,24 @@ public class SPIDSpAdapter implements SPAdapter {
                 if (userVal != null && userVal.get(0) != null) {
                     log_value.put(SPID_FISCALNUMBER_ATTRNAME, userVal.get(0).toString()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + SPID_FISCALNUMBER_ATTRNAME + ": null ... ");
+
+                    logger.debug(method + SPID_FISCALNUMBER_ATTRNAME + ": null ... ");
                 }
             } else {
-                if (debug.messageEnabled())
-                    debug.message(method + "assertion is null");
+
+                logger.debug(method + "assertion is null");
             }
 
             // Log dei valori pi importanti estrapolati singolarmente
             logger.info("[transactionID= " + transactionID + "] | Summary= " + log_value);
 
         } catch (SAML2Exception e) {
-            debug.error(method + "SAML2Exception: ", e);
+            logger.error(method + "SAML2Exception: ", e);
             e.printStackTrace();
             logger.error("SAML2Exception: " + e);
             return false;
         } catch (Exception e) {
-            debug.error(method + "Exception: ", e);
+            logger.error(method + "Exception: ", e);
             e.printStackTrace();
             logger.error("Exception: " + e);
             return false;
@@ -1230,8 +1213,8 @@ public class SPIDSpAdapter implements SPAdapter {
     private boolean writeRecordSpid(Assertion assertion, AuthnRequest authnRequest,
             Response ssoResponse) {
         String method = "[writeRecordSpid]:: ";
-        if (debug.messageEnabled())
-            debug.message(method + "inizio ... ");
+
+        logger.debug(method + "inizio ... ");
 
         /*
          * TRACCIATURE SERVICE PROVIDER
@@ -1252,110 +1235,106 @@ public class SPIDSpAdapter implements SPAdapter {
             if (authnRequest != null) {
                 if (authnRequest.toXMLString() != null) {
                     // if(debug.messageEnabled())
-                    // debug.message(method + "AuthnRequest: " + authnRequest.toXMLString() );
+                    // logger.debug(method + "AuthnRequest: " + authnRequest.toXMLString() );
                     col_val.put(CustomHandler.col_authn_request, (String) authnRequest.toXMLString()); // BLOB
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "AuthnRequest: null ... ");
+
+                    logger.debug(method + "AuthnRequest: null ... ");
                 }
 
                 if (authnRequest.getID() != null) {
-                    if (debug.messageEnabled())
-                        debug.message(method + "AuthnReq_ID: " + authnRequest.getID());
+
+                    logger.debug(method + "AuthnReq_ID: " + authnRequest.getID());
                     col_val.put(CustomHandler.col_authnreq_id, authnRequest.getID()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "AuthnReq_ID: null ... ");
+
+                    logger.debug(method + "AuthnReq_ID: null ... ");
                 }
 
                 if (authnRequest.getIssueInstant() != null) {
-                    if (debug.messageEnabled())
-                        debug.message(method + "AuthnReq_IssueInstant: " + authnRequest.getIssueInstant().toString());
+
+                    logger.debug(method + "AuthnReq_IssueInstant: " + authnRequest.getIssueInstant().toString());
                     col_val.put(CustomHandler.col_authnreq_issue_instant,
                             new Timestamp(authnRequest.getIssueInstant().getTime())); // Timestamp
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "AuthnReq_IssueInstant: null ... ");
+
+                    logger.debug(method + "AuthnReq_IssueInstant: null ... ");
                 }
             }
 
             if (ssoResponse != null) {
                 if (ssoResponse.toXMLString() != null) {
                     // if(debug.messageEnabled())
-                    // debug.message(method + "Response: " + ssoResponse.toXMLString() );
+                    // logger.debug(method + "Response: " + ssoResponse.toXMLString() );
                     col_val.put(CustomHandler.col_response, ssoResponse.toXMLString()); // BLOB
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Response: null ... ");
+
+                    logger.debug(method + "Response: null ... ");
                 }
 
                 if (ssoResponse.getID() != null) {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Resp_ID: " + ssoResponse.getID());
+
+                    logger.debug(method + "Resp_ID: " + ssoResponse.getID());
                     col_val.put(CustomHandler.col_resp_id, ssoResponse.getID()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Resp_ID: null ... ");
+
+                    logger.debug(method + "Resp_ID: null ... ");
                 }
 
                 if (ssoResponse.getIssueInstant() != null) {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Resp_IssueInstant: " + ssoResponse.getIssueInstant().toString());
+
+                    logger.debug(method + "Resp_IssueInstant: " + ssoResponse.getIssueInstant().toString());
                     col_val.put(CustomHandler.col_resp_issue_instant,
                             new Timestamp(ssoResponse.getIssueInstant().getTime())); // Date
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Resp_IssueInstant: null ... ");
+
+                    logger.debug(method + "Resp_IssueInstant: null ... ");
                 }
 
                 if (ssoResponse.getIssuer() != null) {
-                    if (debug.messageEnabled()) {
-                        debug.message(method + "Resp_Issuer: " + ssoResponse.getIssuer().getValue());
-                        debug.message(method + "Resp_Issuer INT: " + ssoResponse.getIssuer().getValue().length());
-                    }
+                    logger.debug(method + "Resp_Issuer: " + ssoResponse.getIssuer().getValue());
+                    logger.debug(method + "Resp_Issuer INT: " + ssoResponse.getIssuer().getValue().length());
+
                     col_val.put(CustomHandler.col_resp_issuer, ssoResponse.getIssuer().getValue()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Resp_Issuer: null ... ");
+
+                    logger.debug(method + "Resp_Issuer: null ... ");
                 }
             }
 
             if (assertion != null) {
                 if (assertion.getID() != null) {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Assertion_ID: " + assertion.getID());
+
+                    logger.debug(method + "Assertion_ID: " + assertion.getID());
                     col_val.put(CustomHandler.col_assertion_id, assertion.getID()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Assertion_ID: null ... ");
+
+                    logger.debug(method + "Assertion_ID: null ... ");
                 }
 
                 if (assertion.getSubject() != null) {
-                    if (debug.messageEnabled()) {
-                        debug.message(method + "Assertion_subject - getNameID().getValue: "
-                                + assertion.getSubject().getNameID().getValue());
-                    }
+
+                    logger.debug(method + "Assertion_subject - getNameID().getValue: "
+                            + assertion.getSubject().getNameID().getValue());
+
                     // col_val.put(SPIDHandler.col_assertion_subject, (String)
                     // assertion.getSubject().toXMLString() ); //BLOB
                     col_val.put(CustomHandler.col_assertion_subject,
                             (String) assertion.getSubject().getNameID().getValue()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Assertion_subject: null ... ");
+                    logger.debug(method + "Assertion_subject: null ... ");
                 }
 
                 if (assertion.getSubject().getNameID() != null) {
-                    if (debug.messageEnabled()) {
-                        debug.message(method + "Assertion_subject_NameQualifier: "
-                                + assertion.getSubject().getNameID().getNameQualifier());
-                        debug.message(method + "Assertion_subject_NameQualifier_ INT: "
-                                + assertion.getSubject().getNameID().getNameQualifier().length());
-                    }
+                    logger.debug(method + "Assertion_subject_NameQualifier: "
+                            + assertion.getSubject().getNameID().getNameQualifier());
+                    logger.debug(method + "Assertion_subject_NameQualifier_ INT: "
+                            + assertion.getSubject().getNameID().getNameQualifier().length());
+
                     col_val.put(CustomHandler.col_assertion_subject_namequalifier,
                             assertion.getSubject().getNameID().getNameQualifier()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Assertion_subject_NameQualifier: null ... ");
+                    logger.debug(method + "Assertion_subject_NameQualifier: null ... ");
                 }
 
                 // CODICE FISCALE
@@ -1373,8 +1352,8 @@ public class SPIDSpAdapter implements SPAdapter {
                 if (userVal != null && userVal.get(0) != null) {
                     col_val.put(CustomHandler.col_fiscalcode, userVal.get(0).toString()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Fiscalcode: null ... ");
+
+                    logger.debug(method + "Fiscalcode: null ... ");
                 }
 
                 /*
@@ -1390,18 +1369,18 @@ public class SPIDSpAdapter implements SPAdapter {
                 if (status != null && status.getStatusCode() != null) {
                     col_val.put(CustomHandler.col_statuscode, status.getStatusCode().getValue()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Status Code: null ... ");
+
+                    logger.debug(method + "Status Code: null ... ");
                 }
                 if (status != null && status.getStatusMessage() != null) {
                     col_val.put(CustomHandler.col_statuscode_message, status.getStatusMessage()); // String
                 } else {
-                    if (debug.messageEnabled())
-                        debug.message(method + "Status Code Message: null ... ");
+
+                    logger.debug(method + "Status Code Message: null ... ");
                 }
             }
         } catch (SAML2Exception e) {
-            debug.error(method + "SAML2Exception: ", e);
+            logger.error(method + "SAML2Exception: ", e);
             e.printStackTrace();
         }
 
@@ -1415,13 +1394,13 @@ public class SPIDSpAdapter implements SPAdapter {
             db.insertRow(col_val);
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
-            if (debug.errorEnabled())
-                debug.error(method, e);
+
+            logger.error(method, e);
             return false;
         } catch (SQLException e) {
             e.printStackTrace();
-            if (debug.errorEnabled())
-                debug.error(method, e);
+
+            logger.error(method, e);
             return false;
         } finally {
             if (db != null)
@@ -1429,8 +1408,8 @@ public class SPIDSpAdapter implements SPAdapter {
                     db.close();
                 } catch (SQLException e) {
                     e.printStackTrace();
-                    if (debug.errorEnabled())
-                        debug.error(method, e);
+
+                    logger.error(method, e);
                     return false;
                 }
         }
@@ -1439,8 +1418,8 @@ public class SPIDSpAdapter implements SPAdapter {
 
     private boolean redirectToFirstLogin(SSOToken ssoToken, String realm, HttpServletResponse response) {
         String method = "[redirectToFirstLogin]:: ";
-        if (debug.messageEnabled())
-            debug.message(method + "inizio ... ");
+
+        logger.debug(method + "inizio ... ");
 
         // se non deve essere effettuata la redirect esce dal metodo
         if (!redirectToFirstLogin)
@@ -1448,8 +1427,8 @@ public class SPIDSpAdapter implements SPAdapter {
 
         String strLandingPage = "";
         if (FIRSTLOGIN_LANDINGPAGE == null || FIRSTLOGIN_LANDINGPAGE.trim().equals("")) {
-            if (debug.errorEnabled())
-                debug.error(method + "Error: " + FIRSTLOGIN_LANDINGPAGE + " undefined: exit");
+
+            logger.error(method + "Error: " + FIRSTLOGIN_LANDINGPAGE + " undefined: exit");
             return false;
         } else {
             strLandingPage = FIRSTLOGIN_LANDINGPAGE;
@@ -1460,8 +1439,8 @@ public class SPIDSpAdapter implements SPAdapter {
              * NON NECESSARIO
              * if( HEADER_IDSITO!=null ){
              * //imposta la variabile IDSITO
-             * if (debug.messageEnabled())
-             * debug.message( method + "______ REDIRECT_TO: " + REDIRECT_TO );
+             * 
+             * logger.debug( method + "______ REDIRECT_TO: " + REDIRECT_TO );
              * ssoToken.setProperty( "GOTO", REDIRECT_TO );
              * }
              */
@@ -1469,13 +1448,12 @@ public class SPIDSpAdapter implements SPAdapter {
             response.setStatus(HttpServletResponse.SC_MOVED_TEMPORARILY);
             response.setHeader("Location", strLandingPage);
 
-            if (debug.messageEnabled()) {
-                debug.message(method + "FirstLogin end, User[" + ssoToken.getPrincipal().getName() + "] redirect to: "
-                        + strLandingPage);
-            }
+            logger.debug(method + "FirstLogin end, User[" + ssoToken.getPrincipal().getName() + "] redirect to: "
+                    + strLandingPage);
+
             return true;
         } catch (Exception ex) {
-            debug.error(method
+            logger.error(method
                     + " Exception while setting session password property: "
                     + ex);
         }
@@ -1485,8 +1463,8 @@ public class SPIDSpAdapter implements SPAdapter {
     @SuppressWarnings("unchecked")
     private boolean isFirstLogin(SSOToken ssoToken, String realm) {
         String method = "[isFirstLogin]:: ";
-        if (debug.messageEnabled())
-            debug.message(method + "inizio ... ");
+
+        logger.debug(method + "inizio ... ");
 
         // se non deve essere effettuata la redirect esce dal metodo
         if (!redirectToFirstLogin)
@@ -1502,8 +1480,8 @@ public class SPIDSpAdapter implements SPAdapter {
         String strAttributeName = "";
 
         if (FIRSTLOGIN_ATTRIBUTE == null || FIRSTLOGIN_ATTRIBUTE.trim().equals("")) {
-            if (debug.messageEnabled())
-                debug.message(method + "FIRSTLOGIN_ATTRIBUTE undefined: exit");
+
+            logger.debug(method + "FIRSTLOGIN_ATTRIBUTE undefined: exit");
             return primoAccesso;
         } else {
             strAttributeName = FIRSTLOGIN_ATTRIBUTE;
@@ -1512,16 +1490,14 @@ public class SPIDSpAdapter implements SPAdapter {
         String strAttributeValue = "";
 
         if (FIRSTLOGIN_ATTRIBUTE_VAL == null || FIRSTLOGIN_ATTRIBUTE_VAL.trim().equals("")) {
-            if (debug.messageEnabled())
-                debug.message(method + "FIRSTLOGIN_ATTRIBUTE_VAL undefined: exit");
+
+            logger.debug(method + "FIRSTLOGIN_ATTRIBUTE_VAL undefined: exit");
             return primoAccesso;
         } else {
             strAttributeValue = FIRSTLOGIN_ATTRIBUTE_VAL;
         }
 
-        if (debug.messageEnabled()) {
-            debug.message(method + IDREPO + "=" + strUserIdRepoName);
-        }
+        logger.debug(method + IDREPO + "=" + strUserIdRepoName);
 
         try {
             if (ssoToken != null && ssoToken.getPrincipal().getName() != null) {
@@ -1533,15 +1509,15 @@ public class SPIDSpAdapter implements SPAdapter {
                 }
 
                 if (accountName != null && !accountName.isEmpty()) {
-                    if (debug.messageEnabled())
-                        debug.message(method + " accountName: " + accountName);
+
+                    logger.debug(method + " accountName: " + accountName);
 
                     Map<String, Set<String>> attributeValueMap = null;
                     if (strUserIdRepoName != null && !strUserIdRepoName.isEmpty()) {
                         attributeValueMap = repoUtil.getCUSTOMUserAttribute(accountName, realm, strUserIdRepoName, null,
                                 userContainer, strAttributeName);
                         if (attributeValueMap != null) {
-                            debug.message(method + " attributeValueMap: " + attributeValueMap.size());
+                            logger.debug(method + " attributeValueMap: " + attributeValueMap.size());
                         } else {
                             @SuppressWarnings("unused")
                             List<AMIdentity> users = repoUtil.getUserStoreIdentity(accountName, realm);
@@ -1551,7 +1527,7 @@ public class SPIDSpAdapter implements SPAdapter {
                         if (users != null && !users.isEmpty()) // utente esistente
                         {
                             if (users.size() > 1) { // TODO
-                                debug.message(method + "trovate piu occorrenze sullo UserStore per name[" + accountName
+                                logger.debug(method + "trovate piu occorrenze sullo UserStore per name[" + accountName
                                         + "] e realm[" + realm + "]");
                             } else {
                                 AMIdentity usr = users.get(0);
@@ -1561,37 +1537,36 @@ public class SPIDSpAdapter implements SPAdapter {
                                 }
                             }
                         } else
-                            debug.error(method + " utente non trovato");
+                            logger.error(method + " utente non trovato");
                     }
 
-                    if (debug.messageEnabled()) {
-                        debug.message(method + strAttributeName + "=" + strAttributeValue);
-                    }
+                    logger.debug(method + strAttributeName + "=" + strAttributeValue);
+
                     for (Entry<String, Set<String>> entry : attributeValueMap.entrySet()) {
                         String attributeName = entry.getKey();
                         Set<String> attributeValue = entry.getValue();
-                        if (debug.messageEnabled())
-                            debug.message(method + " attributeName[" + attributeName + "][" + attributeValue + "]");
+
+                        logger.debug(method + " attributeName[" + attributeName + "][" + attributeValue + "]");
                         if (attributeName != null && attributeName.equalsIgnoreCase(strAttributeName)
                                 && attributeValue != null && attributeValue.contains(strAttributeValue)) {
-                            debug.message(method + " attributeName: " + attributeName);
-                            debug.message(method + " strAttributeName: " + strAttributeName);
-                            debug.message(method + " attributeValue: " + attributeValue);
-                            debug.message(method + " strAttributeValue: " + strAttributeValue);
+                            logger.debug(method + " attributeName: " + attributeName);
+                            logger.debug(method + " strAttributeName: " + strAttributeName);
+                            logger.debug(method + " attributeValue: " + attributeValue);
+                            logger.debug(method + " strAttributeValue: " + strAttributeValue);
                             primoAccesso = true;
                         }
                     }
                 }
             }
         } catch (SSOException sse) {
-            debug.error(method + " SSOException while setting session password property: " + sse);
+            logger.error(method + " SSOException while setting session password property: " + sse);
         } catch (Exception ex) {
-            debug.error(method
+            logger.error(method
                     + " Exception while setting session password property: "
                     + ex);
         }
-        if (debug.messageEnabled())
-            debug.message(method + " primoAccesso: " + primoAccesso);
+
+        logger.debug(method + " primoAccesso: " + primoAccesso);
         return primoAccesso;
     }
 
