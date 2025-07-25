@@ -33,10 +33,12 @@ import org.apache.http.ssl.SSLContextBuilder;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CustomRestUtil {
 
-	private static com.sun.identity.shared.debug.Debug debug = null;
+	private static Logger logger = null;
 	private static String sGlobalUrlService;
 	private static final String GET_URL = "/managed/user?_queryFilter=/userName+eq+\'";
 	private static final String PATCH_URL = "/managed/user/";
@@ -63,8 +65,8 @@ public class CustomRestUtil {
 	public CustomRestUtil(String sBaseUrlService, String sAdminUser, String sAdminPwd) throws Exception {
 		String method = "[CustomRestUtil]:: ";
 
-		if (debug == null) {
-			debug = com.sun.identity.shared.debug.Debug.getInstance("CustomRestUtil");
+		if (logger == null) {
+			logger = LoggerFactory.getLogger(CustomRestUtil.class);
 		}
 
 		if (sBaseUrlService != null && !sBaseUrlService.isEmpty() &&
@@ -74,7 +76,7 @@ public class CustomRestUtil {
 			sGlobalAdminUser = sAdminUser;
 			sGlobalAdminPwd = sAdminPwd;
 		} else {
-			debug.error(method + "Rest Base URL Service OR Admin User OR Admin Password are empty or null");
+			logger.error(method + "Rest Base URL Service OR Admin User OR Admin Password are empty or null");
 			Exception se = new Exception(
 					"Eccezione Rest Base URL Service OR Admin User OR Admin Password are empty or null");
 			throw se;
@@ -125,9 +127,9 @@ public class CustomRestUtil {
 		String method = "[updateIDMUser]:: ";
 
 		if (sAttLDAP != null && !sAttLDAP.isEmpty() && mapAttrLdapIdm != null && !mapAttrLdapIdm.isEmpty()) {
-			if (debug.messageEnabled())
-				debug.message(method + "Attributo LDAP[" + sAttLDAP + "] Attributo IDM[" + mapAttrLdapIdm.get(sAttLDAP)
-						+ "]");
+
+			logger.debug(method + "Attributo LDAP[" + sAttLDAP + "] Attributo IDM[" + mapAttrLdapIdm.get(sAttLDAP)
+					+ "]");
 			return mapAttrLdapIdm.get(sAttLDAP);
 		} else
 			return null;
@@ -144,41 +146,40 @@ public class CustomRestUtil {
 		String method = "[updateIDMUser]:: ";
 
 		if (attrs == null || attrs.isEmpty()) {
-			debug.error(method + " Specificare gli attributi dello user IDM da aggiornare");
+			logger.error(method + " Specificare gli attributi dello user IDM da aggiornare");
 			return false;
 		}
 		if (sUid == null || sUid.isEmpty()) {
-			debug.error(method + " Specificare lo userName dello user IDM da aggiornare");
+			logger.error(method + " Specificare lo userName dello user IDM da aggiornare");
 			return false;
 		}
 
 		try {
-			debug.message(method + "INIZIO GET User REST IDM [" + sUid + "]");
+			logger.debug(method + "INIZIO GET User REST IDM [" + sUid + "]");
 			/* GET */
 			JSONObject userJsonObject = sendGET(sUid);
 			if (userJsonObject != null && userJsonObject.getString("_id") != null) {
-				if (debug.messageEnabled())
-					debug.message(method + "GET userJsonObject:: " + userJsonObject.toString());
+
+				logger.debug(method + "GET userJsonObject:: " + userJsonObject.toString());
 				String id = userJsonObject.getString("_id");
-				if (debug.messageEnabled()) {
-					debug.message(method + "GET userJsonObject GET _ID :: " + id);
-					debug.message(method + "___GET DONE");
-				}
+
+				logger.debug(method + "GET userJsonObject GET _ID :: " + id);
+				logger.debug(method + "___GET DONE");
 
 				/* PATCH */
-				debug.message(method + "INIZIO Update User REST IDM userName [" + sUid + "] ed id IDM[" + id + "]");
+				logger.debug(method + "INIZIO Update User REST IDM userName [" + sUid + "] ed id IDM[" + id + "]");
 				int result = sendPATCH(id, attrs);
 				// [ 200 : OK , 1 : ERRORE GENERICO , 2 : parametri non validi o null ]
 				if (result == 200)
 					return true;
 				else {
-					debug.error(method + "ERRORE PATCH REST IDM userName [" + sUid + "] return Code [" + result + "]");
+					logger.error(method + "ERRORE PATCH REST IDM userName [" + sUid + "] return Code [" + result + "]");
 				}
 			} else {
-				debug.error(method + "errore Get User [" + sUid + "]  utente inesistente");
+				logger.error(method + "errore Get User [" + sUid + "]  utente inesistente");
 			}
 		} catch (JSONException e) {
-			debug.error(method + e.getMessage());
+			logger.error(method + e.getMessage());
 		}
 		return false;
 	}
@@ -247,10 +248,10 @@ public class CustomRestUtil {
 					userJsonObject = new JSONObject(result.get(i).toString());
 				}
 			} else {
-				debug.error(method + "GET Response Status ERROR :: " + httpResponse.getStatusLine().getStatusCode());
+				logger.error(method + "GET Response Status ERROR :: " + httpResponse.getStatusLine().getStatusCode());
 			}
 		} catch (JSONException e) {
-			debug.error(method + e.getMessage());
+			logger.error(method + e.getMessage());
 		} finally {
 			reader.close();
 			httpClient.close();
@@ -332,7 +333,7 @@ public class CustomRestUtil {
 						}
 						jsonPostArray.put(jsonPostObject);
 					} else {
-						debug.message(
+						logger.debug(
 								method + "Mapping LDAP-IDM non trovato per attributo LDAP [" + entry.getKey() + "]");
 					}
 				}
@@ -342,11 +343,11 @@ public class CustomRestUtil {
 			// \"field\" : \"givenName\", \"value\" : \"Domenico\", \"field\" :
 			// \"sn\", \"value\" : \"Paoli\" } ]";
 			// StringEntity jsonEntity = new StringEntity(stringToParse);
-			if (debug.messageEnabled())
-				debug.message(method + "_______________PATCH jsonPostArray :: " + jsonPostArray.toString());
+
+			logger.debug(method + "_______________PATCH jsonPostArray :: " + jsonPostArray.toString());
 			StringEntity jsonEntity = new StringEntity(jsonPostArray.toString());
-			if (debug.messageEnabled())
-				debug.message(method + "PATCH jsonEntity :: " + jsonEntity);
+
+			logger.debug(method + "PATCH jsonEntity :: " + jsonEntity);
 
 			httpPatch.setEntity(jsonEntity);
 
@@ -362,17 +363,16 @@ public class CustomRestUtil {
 					sResponse.append(inputLine);
 				}
 
-				debug.message(method + "PATCH User[" + uid + "] Avvenuta con successo! ");
+				logger.debug(method + "PATCH User[" + uid + "] Avvenuta con successo! ");
 
-				if (debug.messageEnabled())
-					debug.message(method + "________________PATCH response :: " + sResponse);
+				logger.debug(method + "________________PATCH response :: " + sResponse);
 			} else {
-				debug.error("PATCH User[" + uid + "] Response Status ERROR :: "
+				logger.error("PATCH User[" + uid + "] Response Status ERROR :: "
 						+ httpResponse.getStatusLine().getStatusCode());
 			}
 
 		} catch (JSONException e) {
-			debug.error(method + e.getMessage());
+			logger.error(method + e.getMessage());
 		} finally {
 			if (httpResponse != null)
 				httpResponse.close();
@@ -448,9 +448,8 @@ public class CustomRestUtil {
 				// Casistica se abbiamo nome comune dobbiamo trovate il codice
 				if (flagInput) {
 
-					if (debug.messageEnabled())
-						debug.message(method
-								+ " Siamo nella casistica dove abbiamo il nome del comune e dobbiamo trovare il codice");
+					logger.debug(method
+							+ " Siamo nella casistica dove abbiamo il nome del comune e dobbiamo trovare il codice");
 
 					String comune = input;
 
@@ -459,10 +458,9 @@ public class CustomRestUtil {
 						userJsonObject = new JSONObject(result.get(i).toString());
 						if (userJsonObject.getString("nome").toLowerCase().equals(comune.toLowerCase())) {
 
-							if (debug.messageEnabled())
-								debug.message(method
-										+ "[cdmResidenzaCodiceComune] = " + "[" + userJsonObject.getString("codice")
-										+ "]");
+							logger.debug(method
+									+ "[cdmResidenzaCodiceComune] = " + "[" + userJsonObject.getString("codice")
+									+ "]");
 
 							userAttrMap.put("cdmResidenzaCodiceComune",
 									Arrays.asList(userJsonObject.getString("codice")));
@@ -471,9 +469,8 @@ public class CustomRestUtil {
 					}
 				} else {
 
-					if (debug.messageEnabled())
-						debug.message(method
-								+ " Siamo nella casistica dove abbiamo il codice del comune e dobbiamo trovare il nome");
+					logger.debug(method
+							+ " Siamo nella casistica dove abbiamo il codice del comune e dobbiamo trovare il nome");
 
 					// Casistica se abbiamo il codice e dobbiamo trovate il nome del comune
 					String codice = input;
@@ -484,9 +481,9 @@ public class CustomRestUtil {
 						userJsonObject = new JSONObject(result.get(i).toString());
 
 						if (userJsonObject.getString("codice").equals(codice)) {
-							if (debug.messageEnabled())
-								debug.message(method
-										+ " [l] = " + "[" + userJsonObject.getString("nome") + "]");
+
+							logger.debug(method
+									+ " [l] = " + "[" + userJsonObject.getString("nome") + "]");
 
 							userAttrMap.put("l", Arrays.asList(userJsonObject.getString("nome")));
 						}

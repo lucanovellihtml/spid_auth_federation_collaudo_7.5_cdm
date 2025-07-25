@@ -6,6 +6,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.sun.identity.saml2.assertion.Assertion;
 import com.sun.identity.saml2.assertion.Attribute;
 import com.sun.identity.saml2.assertion.AttributeStatement;
@@ -18,104 +21,107 @@ import com.sun.identity.saml2.key.KeyUtil;
 import com.sun.identity.saml2.meta.SAML2MetaException;
 
 public class CustomFederationUtil {
-	private static com.sun.identity.shared.debug.Debug debug = null;
+	private static Logger logger = null;
 	private static String DBGNAME = "CustomFederationUtil";
-	
+
 	private Set<PrivateKey> decryptionKey = null;
 
 	public CustomFederationUtil() {
-		if (debug == null){
-			debug = com.sun.identity.shared.debug.Debug.getInstance(DBGNAME);
+		if (logger == null) {
+			logger = LoggerFactory.getLogger(CustomFederationUtil.class);
 		}
 	}
 
-	public NameID getNameID(Assertion assertion, String hostEntityID, String realm){
+	public NameID getNameID(Assertion assertion, String hostEntityID, String realm) {
 		String method = "[getNameID]:: ";
 
 		NameID nameID = null;
 		try {
 			EncryptedID encryptedID = assertion.getSubject().getEncryptedID();
-			if (encryptedID != null){
-				decryptionKey = (Set<PrivateKey>) KeyUtil.getDecryptionKeys(SAML2Utils.getSAML2MetaManager().getSPSSOConfig(realm, hostEntityID));
+			if (encryptedID != null) {
+				decryptionKey = (Set<PrivateKey>) KeyUtil
+						.getDecryptionKeys(SAML2Utils.getSAML2MetaManager().getSPSSOConfig(realm, hostEntityID));
 				nameID = encryptedID.decrypt(decryptionKey);
-			}else{
+			} else {
 				nameID = assertion.getSubject().getNameID();
 			}
 		} catch (SAML2MetaException e1) {
-			debug.error(method + "SAML2MetaException: ", e1);
+			logger.error(method + "SAML2MetaException: ", e1);
 		} catch (SAML2Exception e) {
-			debug.error(method + "SAML2Exception: ", e);
+			logger.error(method + "SAML2Exception: ", e);
 		}
 		return nameID;
 	}
-	
-	public Object getAssertionAttribute(String realm, String entityID, Assertion assertion, String attrName) throws SAML2Exception {
+
+	public Object getAssertionAttribute(String realm, String entityID, Assertion assertion, String attrName)
+			throws SAML2Exception {
 		String method = "[getAssertionAttribute]:: ";
 
 		List<?> attributeStatements = assertion.getAttributeStatements();
-		if (attributeStatements == null || attributeStatements.size() == 0){
-			if (debug.errorEnabled()){
-				debug.message(method + "Assertion does not have attribute statements.");
-			}
+		if (attributeStatements == null || attributeStatements.size() == 0) {
+
+			logger.debug(method + "Assertion does not have attribute statements.");
+
 			return null;
 		}
 
 		List<?> attributeValue = null;
 		Iterator<?> iter = attributeStatements.iterator();
 
-		while (iter.hasNext()){
+		while (iter.hasNext()) {
 
 			AttributeStatement statement = (AttributeStatement) iter.next();
 			attributeValue = getAttribute(statement, attrName, realm, entityID);
-			if (attributeValue != null && !attributeValue.isEmpty()){
+			if (attributeValue != null && !attributeValue.isEmpty()) {
 				break;
 			}
 		}
 
-		if (attributeValue == null || attributeValue.isEmpty()){
-			if (debug.errorEnabled()){
-				debug.error(method + "attribute is not specified in the assertion.");
-			}
+		if (attributeValue == null || attributeValue.isEmpty()) {
+
+			logger.error(method + "attribute is not specified in the assertion.");
+
 			return null;
 		}
 		return attributeValue;
 	}
 
-
-	private List<?> getAttribute(AttributeStatement statement, String attributeName, String realm, String hostEntityID) {
+	private List<?> getAttribute(AttributeStatement statement, String attributeName, String realm,
+			String hostEntityID) {
 		String method = "[getAttribute]:: ";
 
 		// check it if the attribute needs to be encrypted?
 		List<Attribute> list = statement.getAttribute();
 		List<?> encList = statement.getEncryptedAttribute();
-		if (encList != null && encList.size() != 0){
+		if (encList != null && encList.size() != 0) {
 			// a new list to hold the union of clear and encrypted attributes
 			List<Attribute> allList = new ArrayList<Attribute>();
-			if (list != null && !list.isEmpty()){
+			if (list != null && !list.isEmpty()) {
 				allList.addAll(list);
 			}
 			list = allList;
-			for (Iterator<?> encIter = encList.iterator(); encIter.hasNext();){
-				try{
-					if (decryptionKey == null){
-						decryptionKey = (Set<PrivateKey>) KeyUtil.getDecryptionKeys(SAML2Utils.getSAML2MetaManager().getSPSSOConfig(realm, hostEntityID));
+			for (Iterator<?> encIter = encList.iterator(); encIter.hasNext();) {
+				try {
+					if (decryptionKey == null) {
+						decryptionKey = (Set<PrivateKey>) KeyUtil.getDecryptionKeys(
+								SAML2Utils.getSAML2MetaManager().getSPSSOConfig(realm, hostEntityID));
 					}
 					list.add(((EncryptedAttribute) encIter.next()).decrypt(decryptionKey));
-				}catch (SAML2Exception se){
-					debug.error(method + "Decryption error:", se);
+				} catch (SAML2Exception se) {
+					logger.error(method + "Decryption error:", se);
 					return null;
 				}
 			}
 		}
 
-		for (Iterator<Attribute> iter = list.iterator(); iter.hasNext();){
+		for (Iterator<Attribute> iter = list.iterator(); iter.hasNext();) {
 			Attribute attribute = iter.next();
-			if (!attributeName.equalsIgnoreCase(attribute.getName())){
+			if (!attributeName.equalsIgnoreCase(attribute.getName())) {
 				continue;
 			}
 
 			List<?> values = attribute.getAttributeValueString();
-			if (values == null || values.size() == 0){
+			if (values == null || values.size() == 0) {
 				return null;
 			}
 			return values;
@@ -124,28 +130,28 @@ public class CustomFederationUtil {
 	}
 
 	public List<?> getAttributeVal(List<Attribute> lattribute, String attributeName) {
-//		String method = "[getAttributeVal]:: ";
-/*
-		List<?> values = null;
-		int index = lattribute.indexOf(attributeName);
-		if(index > 0)
-			values = lattribute.get(index).getAttributeValueString();
-		return values;
-*/	
-		for (Iterator<Attribute> iter = lattribute.iterator(); iter.hasNext();){
+		// String method = "[getAttributeVal]:: ";
+		/*
+		 * List<?> values = null;
+		 * int index = lattribute.indexOf(attributeName);
+		 * if(index > 0)
+		 * values = lattribute.get(index).getAttributeValueString();
+		 * return values;
+		 */
+		for (Iterator<Attribute> iter = lattribute.iterator(); iter.hasNext();) {
 			Attribute attribute = iter.next();
-			if (!attributeName.equalsIgnoreCase(attribute.getName())){
+			if (!attributeName.equalsIgnoreCase(attribute.getName())) {
 				continue;
 			}
 
 			List<?> values = attribute.getAttributeValueString();
-			if (values == null || values.size() == 0){
+			if (values == null || values.size() == 0) {
 				return null;
 			}
 			return values;
 		}
-		
+
 		return null;
 	}
-	
+
 }

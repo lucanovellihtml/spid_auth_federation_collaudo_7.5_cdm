@@ -17,6 +17,8 @@ import org.apache.http.ssl.SSLContextBuilder;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
 import java.io.BufferedReader;
@@ -33,16 +35,19 @@ import java.util.Set;
 
 /**
  * Classe introdotta per la gestione delle utenze eidas aziende sull'IDM;
- * E' stato cambiato il valore della variabile DBGNAME per creare un nuovo file di audit;
- * La logica  è uguale alla logica per gestire le utenze cittadino, è stata cambiata la variabile "GET_URL/PATCH_URL" con i puntamenti all'entity company;
+ * E' stato cambiato il valore della variabile DBGNAME per creare un nuovo file
+ * di audit;
+ * La logica è uguale alla logica per gestire le utenze cittadino, è stata
+ * cambiata la variabile "GET_URL/PATCH_URL" con i puntamenti all'entity
+ * company;
  * E' stata modificata la mappatura dei campi tra ldap-idm;
  */
 public class CustomEidasAziendeRestUtil {
 
-    private static com.sun.identity.shared.debug.Debug debug = null;
+    private static Logger logger = null;
     private static String sGlobalUrlService;
 
-    //MODIFICA LOG EIDAS AZIENDE
+    // MODIFICA LOG EIDAS AZIENDE
     private static final String GET_URL = "/managed/company?_queryFilter=/userName+eq+\'";
     private static final String PATCH_URL = "/managed/company/";
 
@@ -52,16 +57,19 @@ public class CustomEidasAziendeRestUtil {
     private static HashMap<String, String> mapAttrLdapIdm = new HashMap<String, String>();
 
     /**
-     * @param sBaseUrlService URL del server IDM sul quale effettuare le chiamate REST ex: https://openidm.test.comune/openidm
-     * @param sAdminUser      userName dell'utente amministrativo con il quale effettuare la
+     * @param sBaseUrlService URL del server IDM sul quale effettuare le chiamate
+     *                        REST ex: https://openidm.test.comune/openidm
+     * @param sAdminUser      userName dell'utente amministrativo con il quale
+     *                        effettuare la
      *                        chiamata REST
-     * @param sAdminPwd       password dell'utente amministrativo con il quale effettuare la
+     * @param sAdminPwd       password dell'utente amministrativo con il quale
+     *                        effettuare la
      *                        chiamata REST
      */
     public CustomEidasAziendeRestUtil(String sBaseUrlService, String sAdminUser, String sAdminPwd) throws Exception {
         String method = "[CustomAziendeRestUtil]:: ";
-        if (debug == null) {
-            debug = com.sun.identity.shared.debug.Debug.getInstance("CustomEidasAziendeRestUtil");
+        if (logger == null) {
+            logger = LoggerFactory.getLogger(CustomEidasAziendeRestUtil.class);
         }
 
         if (sBaseUrlService != null && !sBaseUrlService.isEmpty() &&
@@ -71,20 +79,22 @@ public class CustomEidasAziendeRestUtil {
             sGlobalAdminUser = sAdminUser;
             sGlobalAdminPwd = sAdminPwd;
         } else {
-            debug.error(method + "Rest Base URL Service OR Admin User OR Admin Password are empty or null");
-            Exception se = new Exception("Eccezione Rest Base URL Service OR Admin User OR Admin Password are empty or null");
+            logger.error(method + "Rest Base URL Service OR Admin User OR Admin Password are empty or null");
+            Exception se = new Exception(
+                    "Eccezione Rest Base URL Service OR Admin User OR Admin Password are empty or null");
             throw se;
         }
 
-        //In caso di aggiunta di un attributo LDAP da mofificare ricordarsi di aggiungere il mapping IDM
-        //Costruisce il Map per la definizione degli attributi ( LDAP , IDM )
-        mapAttrLdapIdm.put("uid", "userName"); //sistemato
+        // In caso di aggiunta di un attributo LDAP da mofificare ricordarsi di
+        // aggiungere il mapping IDM
+        // Costruisce il Map per la definizione degli attributi ( LDAP , IDM )
+        mapAttrLdapIdm.put("uid", "userName"); // sistemato
         mapAttrLdapIdm.put("inetUserStatus", "accountStatus");
-        mapAttrLdapIdm.put("cdmTipoUtente", "cdmTipoUtente"); //aggiunto
-        mapAttrLdapIdm.put("employeeType", "employeeType"); //aggiunto
+        mapAttrLdapIdm.put("cdmTipoUtente", "cdmTipoUtente"); // aggiunto
+        mapAttrLdapIdm.put("employeeType", "employeeType"); // aggiunto
 
-        //MODIFICA LOG EIDAS AZIENDE
-        mapAttrLdapIdm.put("o", "CompanyName"); //aggiunto per spid aziende //sistemato
+        // MODIFICA LOG EIDAS AZIENDE
+        mapAttrLdapIdm.put("o", "CompanyName"); // aggiunto per spid aziende //sistemato
         mapAttrLdapIdm.put("cdmRegisteredOffice", "cdmRegisteredOffice"); // aggiunto per eidas aziende
         mapAttrLdapIdm.put("cdmSedeProvincia", "cdmSedeProvincia"); // aggiunto per eidas aziende
         mapAttrLdapIdm.put("cdmSedeCap", "cdmSedeCap"); // aggiunto per eidas aziende
@@ -92,36 +102,41 @@ public class CustomEidasAziendeRestUtil {
         mapAttrLdapIdm.put("cdmSedeComune", "cdmSedeComune"); // aggiunto per eidas aziende
         mapAttrLdapIdm.put("cdmPartitaIva", "cdmPartitaIva"); // aggiunto per eidas aziende
 
-//      mapAttrLdapIdm.put("cdmNascitaCodiceComune", "cdmPlaceOfBirthDelegato"); //sistemato
-//      mapAttrLdapIdm.put("sn", "sn"); //sistemato
-//      mapAttrLdapIdm.put("cdmNascitaData", "cdmDateOfBirthDelegato"); //sistemato
-//      mapAttrLdapIdm.put("cdmSesso", "cdmGenderDelegato"); //sistemato
-//      mapAttrLdapIdm.put("givenname", "givenName"); //sistemato
-//      mapAttrLdapIdm.put("postalCode", "postalCode"); //sistemato
-//      mapAttrLdapIdm.put("st", "ResidenceProvince"); //sistemato
-//      mapAttrLdapIdm.put("street", "ResidenceAddress"); //sistemato
-//      mapAttrLdapIdm.put("cn", "description");  //aggiunto
-//      mapAttrLdapIdm.put("cdmDomicilioDigitale", "PecEmail"); //sistemato
-//      mapAttrLdapIdm.put("cdmResidenzaCodiceNazione", "countryCode"); // aggiunto per spid aziende //sistemato
-//      mapAttrLdapIdm.put("l", "ResidenceMunicipality"); // aggiunto per spid aziende //sistemato
-//		mapAttrLdapIdm.put("userPassword", "password");
-//		mapAttrLdapIdm.put("telephoneNumber", "telephoneNumber");
-//		mapAttrLdapIdm.put("mail", "mail");
-//		mapAttrLdapIdm.put("cdmPartitaIva", "x");
-//		mapAttrLdapIdm.put("address", "x");
-//		mapAttrLdapIdm.put("idCard", "x");
-//		mapAttrLdapIdm.put("companyName", "x");
-//		mapAttrLdapIdm.put("digitalAddress", "x");
+        // mapAttrLdapIdm.put("cdmNascitaCodiceComune", "cdmPlaceOfBirthDelegato");
+        // //sistemato
+        // mapAttrLdapIdm.put("sn", "sn"); //sistemato
+        // mapAttrLdapIdm.put("cdmNascitaData", "cdmDateOfBirthDelegato"); //sistemato
+        // mapAttrLdapIdm.put("cdmSesso", "cdmGenderDelegato"); //sistemato
+        // mapAttrLdapIdm.put("givenname", "givenName"); //sistemato
+        // mapAttrLdapIdm.put("postalCode", "postalCode"); //sistemato
+        // mapAttrLdapIdm.put("st", "ResidenceProvince"); //sistemato
+        // mapAttrLdapIdm.put("street", "ResidenceAddress"); //sistemato
+        // mapAttrLdapIdm.put("cn", "description"); //aggiunto
+        // mapAttrLdapIdm.put("cdmDomicilioDigitale", "PecEmail"); //sistemato
+        // mapAttrLdapIdm.put("cdmResidenzaCodiceNazione", "countryCode"); // aggiunto
+        // per spid aziende //sistemato
+        // mapAttrLdapIdm.put("l", "ResidenceMunicipality"); // aggiunto per spid
+        // aziende //sistemato
+        // mapAttrLdapIdm.put("userPassword", "password");
+        // mapAttrLdapIdm.put("telephoneNumber", "telephoneNumber");
+        // mapAttrLdapIdm.put("mail", "mail");
+        // mapAttrLdapIdm.put("cdmPartitaIva", "x");
+        // mapAttrLdapIdm.put("address", "x");
+        // mapAttrLdapIdm.put("idCard", "x");
+        // mapAttrLdapIdm.put("companyName", "x");
+        // mapAttrLdapIdm.put("digitalAddress", "x");
     }
 
     private static String getUserAttrMappingIDM(String sAttLDAP) {
         String method = "[updateIDMUser]:: ";
 
         if (sAttLDAP != null && !sAttLDAP.isEmpty() && mapAttrLdapIdm != null && !mapAttrLdapIdm.isEmpty()) {
-            if (debug.messageEnabled())
-                debug.message(method + "Attributo LDAP[" + sAttLDAP + "] Attributo IDM[" + mapAttrLdapIdm.get(sAttLDAP) + "]");
+
+            logger.debug(method + "Attributo LDAP[" + sAttLDAP + "] Attributo IDM[" + mapAttrLdapIdm.get(sAttLDAP)
+                    + "]");
             return mapAttrLdapIdm.get(sAttLDAP);
-        } else return null;
+        } else
+            return null;
     }
 
     /**
@@ -134,41 +149,40 @@ public class CustomEidasAziendeRestUtil {
         String method = "[updateIDMUser]:: ";
 
         if (attrs == null || attrs.isEmpty()) {
-            debug.error(method + " Specificare gli attributi dello user IDM da aggiornare");
+            logger.error(method + " Specificare gli attributi dello user IDM da aggiornare");
             return false;
         }
         if (sUid == null || sUid.isEmpty()) {
-            debug.error(method + " Specificare lo userName dello user IDM da aggiornare");
+            logger.error(method + " Specificare lo userName dello user IDM da aggiornare");
             return false;
         }
 
         try {
-            debug.message(method + "INIZIO GET User REST IDM [" + sUid + "]");
+            logger.debug(method + "INIZIO GET User REST IDM [" + sUid + "]");
             /* GET */
             JSONObject userJsonObject = sendGET(sUid);
             if (userJsonObject != null && userJsonObject.getString("_id") != null) {
-                if (debug.messageEnabled())
-                    debug.message(method + "GET userJsonObject:: " + userJsonObject.toString());
+
+                logger.debug(method + "GET userJsonObject:: " + userJsonObject.toString());
                 String id = userJsonObject.getString("_id");
-                if (debug.messageEnabled()) {
-                    debug.message(method + "GET userJsonObject GET _ID :: " + id);
-                    debug.message(method + "___GET DONE");
-                }
+
+                logger.debug(method + "GET userJsonObject GET _ID :: " + id);
+                logger.debug(method + "___GET DONE");
 
                 /* PATCH */
-                debug.message(method + "INIZIO Update User REST IDM userName [" + sUid + "] ed id IDM[" + id + "]");
+                logger.debug(method + "INIZIO Update User REST IDM userName [" + sUid + "] ed id IDM[" + id + "]");
                 int result = sendPATCH(id, attrs);
-                //[ 200 : OK , 1 : ERRORE GENERICO , 2 : parametri non validi o null ]
+                // [ 200 : OK , 1 : ERRORE GENERICO , 2 : parametri non validi o null ]
                 if (result == 200)
                     return true;
                 else {
-                    debug.error(method + "ERRORE PATCH REST IDM userName [" + sUid + "] return Code [" + result + "]");
+                    logger.error(method + "ERRORE PATCH REST IDM userName [" + sUid + "] return Code [" + result + "]");
                 }
             } else {
-                debug.error(method + "errore Get User [" + sUid + "]  utente inesistente");
+                logger.error(method + "errore Get User [" + sUid + "]  utente inesistente");
             }
         } catch (JSONException e) {
-            debug.error(method + e.getMessage());
+            logger.error(method + e.getMessage());
         }
         return false;
     }
@@ -208,8 +222,8 @@ public class CustomEidasAziendeRestUtil {
 
             sURL = sGlobalUrlService + GET_URL + sUserName + "\'&_prettyPrint=true";
 
-            //MODIFICA LOG EIDAS AZIENDE
-            //httpClient = noSslHttpClient();
+            // MODIFICA LOG EIDAS AZIENDE
+            // httpClient = noSslHttpClient();
 
             HttpGet httpGet = new HttpGet(sURL);
             httpGet.addHeader("X-OpenIDM-Username", sGlobalAdminUser);
@@ -218,7 +232,8 @@ public class CustomEidasAziendeRestUtil {
 
             CloseableHttpResponse httpResponse = httpClient.execute(httpGet);
 
-            if (httpResponse != null && httpResponse.getStatusLine() != null && httpResponse.getStatusLine().getStatusCode() == 200) {
+            if (httpResponse != null && httpResponse.getStatusLine() != null
+                    && httpResponse.getStatusLine().getStatusCode() == 200) {
                 reader = new BufferedReader(new InputStreamReader(httpResponse.getEntity().getContent()));
 
                 String inputLine;
@@ -236,10 +251,10 @@ public class CustomEidasAziendeRestUtil {
                     userJsonObject = new JSONObject(result.get(i).toString());
                 }
             } else {
-                debug.error(method + "GET Response Status ERROR :: " + httpResponse.getStatusLine().getStatusCode());
+                logger.error(method + "GET Response Status ERROR :: " + httpResponse.getStatusLine().getStatusCode());
             }
         } catch (JSONException e) {
-            debug.error(method + e.getMessage());
+            logger.error(method + e.getMessage());
         } finally {
             reader.close();
             httpClient.close();
@@ -262,7 +277,7 @@ public class CustomEidasAziendeRestUtil {
      * @param uid   _id dell'utente IDM da aggiornare
      * @param attrs Attributi da aggiornare
      * @return Ritorna un int con lo Status Code dell httpResponse [ 200 : OK ,
-     * 1 : ERRORE GENERICO , 2 : parametri non validi o null ]
+     *         1 : ERRORE GENERICO , 2 : parametri non validi o null ]
      * @throws IOException
      */
     private static int sendPATCH(String uid, Map<String, Set<String>> attrs)
@@ -274,23 +289,23 @@ public class CustomEidasAziendeRestUtil {
         BufferedReader reader = null;
         int returnCode = 1;
 
-        if (uid == null || uid.isEmpty() || sGlobalAdminUser == null || sGlobalAdminUser.isEmpty() || sGlobalAdminPwd == null
+        if (uid == null || uid.isEmpty() || sGlobalAdminUser == null || sGlobalAdminUser.isEmpty()
+                || sGlobalAdminPwd == null
                 || sGlobalAdminPwd.isEmpty() || attrs == null || attrs.isEmpty())
             return 2;
 
         try {
-            //MODIFICA LOG EIDAS AZIENDE
-            //httpClient = noSslHttpClient();
+            // MODIFICA LOG EIDAS AZIENDE
+            // httpClient = noSslHttpClient();
 
             String sURL = sGlobalUrlService + PATCH_URL + uid;
 
-            debug.error(method + "PATCH sURL :: " + sURL);
+            logger.debug(method + "PATCH sURL :: " + sURL);
 
             HttpPatch httpPatch = new HttpPatch(sURL);
             httpPatch.addHeader("X-OpenIDM-Username", sGlobalAdminUser);
             httpPatch.addHeader("X-OpenIDM-Password", sGlobalAdminPwd);
             httpPatch.addHeader("Content-Type", "application/json");
-
 
             // imposta il JSON per il PATCH
             JSONObject jsonPostObject = null;
@@ -299,7 +314,7 @@ public class CustomEidasAziendeRestUtil {
             for (Entry<String, Set<String>> entry : attrs.entrySet()) {
                 jsonPostObject = new JSONObject();
                 jsonPostObject.put("operation", "replace");
-                //prende il valore corrispondete dal MAP tra LDAP e IDM
+                // prende il valore corrispondete dal MAP tra LDAP e IDM
                 if (entry.getKey() != null) {
                     String sIDMAttr = getUserAttrMappingIDM(entry.getKey());
                     if (sIDMAttr != null) {
@@ -307,7 +322,8 @@ public class CustomEidasAziendeRestUtil {
                         if (entry.getValue() != null) {
                             Object[] userVals = entry.getValue().toArray();
                             String sVals = userVals[0].toString();
-                            //imposta formato corretto (AAAAMMGGHHMMSS) per l'attributo Data di nasciata cdmNascitaData
+                            // imposta formato corretto (AAAAMMGGHHMMSS) per l'attributo Data di nasciata
+                            // cdmNascitaData
                             if (sIDMAttr.equalsIgnoreCase("BirthDate")) {
                                 jsonPostObject.put("value", sVals);
                             } else {
@@ -319,12 +335,13 @@ public class CustomEidasAziendeRestUtil {
                         }
                         jsonPostArray.put(jsonPostObject);
                     } else {
-                        debug.message(method + "Mapping LDAP-IDM non trovato per attributo LDAP [" + entry.getKey() + "]");
+                        logger.debug(
+                                method + "Mapping LDAP-IDM non trovato per attributo LDAP [" + entry.getKey() + "]");
                     }
                 }
             }
 
-            //MODIFICA LOG EIDAS AZIENDE
+            // MODIFICA LOG EIDAS AZIENDE
             StringEntity jsonEntity = new StringEntity(jsonPostArray.toString());
 
             httpPatch.setEntity(jsonEntity);
@@ -341,13 +358,12 @@ public class CustomEidasAziendeRestUtil {
                     sResponse.append(inputLine);
                 }
 
-                debug.message(method + "PATCH User[" + uid + "] Avvenuta con successo! ");
+                logger.debug(method + "PATCH User[" + uid + "] Avvenuta con successo! ");
 
-                if (debug.messageEnabled())
-                    debug.message(method + "________________PATCH response :: " + sResponse);
+                logger.debug(method + "________________PATCH response :: " + sResponse);
             } else {
 
-                //MODIFICA LOG SPID AZIENDE
+                // MODIFICA LOG SPID AZIENDE
                 reader = new BufferedReader(new InputStreamReader(httpResponse.getEntity().getContent()));
 
                 String inputLine;
@@ -357,11 +373,12 @@ public class CustomEidasAziendeRestUtil {
                     sResponse.append(inputLine);
                 }
 
-                debug.error("PATCH User[" + uid + "] Response Status ERROR :: " + httpResponse.getStatusLine().getStatusCode());
+                logger.error("PATCH User[" + uid + "] Response Status ERROR :: "
+                        + httpResponse.getStatusLine().getStatusCode());
             }
 
         } catch (JSONException e) {
-            debug.error(method + e.getMessage());
+            logger.error(method + e.getMessage());
         } finally {
             if (httpResponse != null)
                 httpResponse.close();

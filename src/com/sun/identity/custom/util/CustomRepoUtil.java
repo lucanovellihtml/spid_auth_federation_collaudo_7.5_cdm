@@ -26,12 +26,13 @@ import com.sun.identity.security.AdminTokenAction;
 import com.sun.identity.sm.SMSException;
 import com.sun.identity.sm.ServiceConfig;
 import com.sun.identity.sm.ServiceConfigManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CustomRepoUtil {
     private static String CLASSNAME = "CustomRepoUtil";
     static SSOToken adminToken;
-    private static com.sun.identity.shared.debug.Debug debug = null;
-    private static String DBGNAME = CLASSNAME;
+    private static Logger logger = null;
     private static String GROUP_USERATTR = "memberOf";
     private static String GROUP_ATTR = "uniqueMember";
 
@@ -47,16 +48,16 @@ public class CustomRepoUtil {
     static ServiceConfigManager idRepoServiceConfigManager;
 
     public CustomRepoUtil() {
-        if (debug == null) {
-            debug = com.sun.identity.shared.debug.Debug.getInstance(DBGNAME);
+        if (logger == null) {
+            logger = LoggerFactory.getLogger(CustomRepoUtil.class);
         }
         try {
             adminToken = AdminTokenAction.getInstance().run();
             idRepoServiceConfigManager = new ServiceConfigManager(adminToken, IdConstants.REPO_SERVICE, "1.0");
         } catch (SSOException ssoex) {
-            debug.error(CLASSNAME + ".static:", ssoex);
+            logger.error(CLASSNAME + ".static:", ssoex);
         } catch (SMSException smsex) {
-            debug.error(CLASSNAME + ".static:", smsex);
+            logger.error(CLASSNAME + ".static:", smsex);
         }
     }
 
@@ -71,8 +72,7 @@ public class CustomRepoUtil {
     public List<AMIdentity> getUserStoreIdentity(String name, String realm) {
         String method = "[getUserStoreIdentity]:: ";
 
-        if (debug.messageEnabled())
-            debug.message(method + " --------- ricerca utente [" + name + "] e realm[" + realm + "] ------------ ");
+        logger.debug(method + " --------- ricerca utente [" + name + "] e realm[" + realm + "] ------------ ");
 
         List<AMIdentity> users = new ArrayList<AMIdentity>();
 
@@ -89,7 +89,7 @@ public class CustomRepoUtil {
                 Set<?> results = ident.getSearchResults();
                 if ((results != null) && !results.isEmpty()) {
                     if (results.size() > 1) {
-                        debug.message(method + "trovate multi occorrenze sullo UserStore per name[" + name
+                        logger.debug(method + "trovate multi occorrenze sullo UserStore per name[" + name
                                 + "] e realm[" + realm + "]");
                     }
                     AMIdentity element = null;
@@ -97,15 +97,15 @@ public class CustomRepoUtil {
                         element = (AMIdentity) i.next();
                         users.add(element);
                     }
-                    if (debug.messageEnabled())
-                        debug.message(method + "UTENTE TROVATO");
-                } else if (debug.messageEnabled())
-                    debug.message(method + "nessun risultato trovato!");
+
+                    logger.debug(method + "UTENTE TROVATO");
+                } else
+                    logger.debug(method + "nessun risultato trovato!");
             }
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
         return users;
     }
@@ -113,9 +113,8 @@ public class CustomRepoUtil {
     public List<AMIdentity> getUserStoreIdentityQuery(Map<String, String> searchFilter, String realm) {
         String method = "[getUserStoreIdentityQuery]:: ";
 
-        if (debug.messageEnabled())
-            debug.message(
-                    method + " --------- ricerca utente [" + searchFilter + "] e realm[" + realm + "] ------------ ");
+        logger.debug(
+                method + " --------- ricerca utente [" + searchFilter + "] e realm[" + realm + "] ------------ ");
         List<AMIdentity> users = new ArrayList<AMIdentity>();
 
         if (searchFilter == null || searchFilter.isEmpty())
@@ -147,7 +146,7 @@ public class CustomRepoUtil {
                 Set<?> results = ident.getSearchResults();
                 if ((results != null) && !results.isEmpty()) {
                     if (results.size() > 1) {
-                        debug.message(method + "trovate pi� occorrenze sullo UserStore per searchFilter[" + searchFilter
+                        logger.debug(method + "trovate pi� occorrenze sullo UserStore per searchFilter[" + searchFilter
                                 + "] e realm[" + realm + "]");
                     }
                     AMIdentity element = null;
@@ -155,15 +154,15 @@ public class CustomRepoUtil {
                         element = (AMIdentity) i.next();
                         users.add(element);
                     }
-                    if (debug.messageEnabled())
-                        debug.message(method + "UTENTE TROVATO");
-                } else if (debug.messageEnabled())
-                    debug.message(method + "nessun risultato trovato!");
+
+                    logger.debug(method + "UTENTE TROVATO");
+                } else
+                    logger.debug(method + "nessun risultato trovato!");
             }
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
         return users;
     }
@@ -171,9 +170,8 @@ public class CustomRepoUtil {
     public List<AMIdentity> getUserStoreIdentityQueryAnd(HashMap<String, Set<String>> searchFilter, String realm) {
         String method = "[getUserStoreIdentityQueryAnd]:: ";
 
-        if (debug.messageEnabled())
-            debug.message(
-                    method + " --------- ricerca utente [" + searchFilter + "] e realm[" + realm + "] ------------ ");
+        logger.debug(
+                method + " --------- ricerca utente [" + searchFilter + "] e realm[" + realm + "] ------------ ");
         List<AMIdentity> users = new ArrayList<AMIdentity>();
 
         if (searchFilter == null || searchFilter.isEmpty())
@@ -205,7 +203,7 @@ public class CustomRepoUtil {
                 Set<?> results = ident.getSearchResults();
                 if ((results != null) && !results.isEmpty()) {
                     if (results.size() > 1) {
-                        debug.message(method + "trovate pi� occorrenze sullo UserStore per searchFilter[" + searchFilter
+                        logger.debug(method + "trovate pi� occorrenze sullo UserStore per searchFilter[" + searchFilter
                                 + "] e realm[" + realm + "]");
                     }
                     AMIdentity element = null;
@@ -213,15 +211,15 @@ public class CustomRepoUtil {
                         element = (AMIdentity) i.next();
                         users.add(element);
                     }
-                    if (debug.messageEnabled())
-                        debug.message(method + "UTENTE TROVATO");
-                } else if (debug.messageEnabled())
-                    debug.message(method + "nessun risultato trovato!");
+
+                    logger.debug(method + "UTENTE TROVATO");
+                } else
+                    logger.debug(method + "nessun risultato trovato!");
             }
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
         return users;
     }
@@ -234,11 +232,11 @@ public class CustomRepoUtil {
                 String[] array = val.toArray(new String[val.size()]);
                 return array[0];
             } else
-                debug.error(method + "user[" + user.getName() + "] - getAttribute(dn): null");
+                logger.error(method + "user[" + user.getName() + "] - getAttribute(dn): null");
         } catch (SSOException e) {
-            debug.error(method, e);
+            logger.error(method, e);
         } catch (IdRepoException e) {
-            debug.error(method, e);
+            logger.error(method, e);
         }
         return null;
     }
@@ -250,13 +248,13 @@ public class CustomRepoUtil {
         if (users != null && !users.isEmpty()) // utente esistente
         {
             if (users.size() > 1) {
-                debug.message(method + "trovate piu occorrenze sullo UserStore per name[" + name + "] e realm[" + realm
+                logger.debug(method + "trovate piu occorrenze sullo UserStore per name[" + name + "] e realm[" + realm
                         + "]");
                 return null;
             } else {
                 String userName = getUserDN(users.get(0));
                 if (userName == null) {
-                    debug.error(method + "errore GET DN USER ");
+                    logger.error(method + "errore GET DN USER ");
                     return null;
                 }
 
@@ -271,7 +269,7 @@ public class CustomRepoUtil {
         String method = "[addUserGroups]:: ";
 
         if (user == null) {
-            debug.error(method + "utente nullo");
+            logger.error(method + "utente nullo");
             return false;
         }
 
@@ -279,7 +277,7 @@ public class CustomRepoUtil {
             // verifica che non ci siano altri gruppi gia� associati all'utente
             String userName = getUserDN(user);
             if (userName == null) {
-                debug.error(method + "errore GET DN USER ");
+                logger.error(method + "errore GET DN USER ");
                 return false;
             }
 
@@ -301,9 +299,9 @@ public class CustomRepoUtil {
             }
 
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
 
         return false;
@@ -326,9 +324,9 @@ public class CustomRepoUtil {
                 if (vals != null)
                     attrs.put(GROUP_USERATTR, vals);
             } catch (SSOException e) {
-                debug.error(method + "SSOException: ", e);
+                logger.error(method + "SSOException: ", e);
             } catch (IdRepoException e) {
-                debug.error(method + "IdRepoException: ", e);
+                logger.error(method + "IdRepoException: ", e);
             }
         }
 
@@ -367,9 +365,9 @@ public class CustomRepoUtil {
                 }
             }
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
         return false;
     }
@@ -400,9 +398,9 @@ public class CustomRepoUtil {
                 }
             }
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
         return false;
     }
@@ -431,12 +429,12 @@ public class CustomRepoUtil {
                     if (groups != null)
                         return groups.toArray();
                 } else
-                    debug.error(method + " idRepo e userID NULLI");
+                    logger.error(method + " idRepo e userID NULLI");
             }
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
 
         return null;
@@ -447,12 +445,12 @@ public class CustomRepoUtil {
             throws IdRepoException, SSOException {
         String method = "[addTemplateUsers]:: ";
 
-        if (debug.messageEnabled()) {
-            debug.message(method + "parametri: name[" + name + "]");
-            debug.message(method + "parametri: user[" + user + "]");
-            debug.message(method + "parametri: realm[" + realm + "]");
-            // debug.message(method + "parametri: attributeMap[" + attributeMap + "]");
-            debug.message(method + "parametri: delete[" + delete + "]");
+        {
+            logger.debug(method + "parametri: name[" + name + "]");
+            logger.debug(method + "parametri: user[" + user + "]");
+            logger.debug(method + "parametri: realm[" + realm + "]");
+            // logger.debug(method + "parametri: attributeMap[" + attributeMap + "]");
+            logger.debug(method + "parametri: delete[" + delete + "]");
         }
         if (adminToken == null)
             adminToken = AdminTokenAction.getInstance().run();
@@ -466,13 +464,13 @@ public class CustomRepoUtil {
                         Object[] groupsIdentity = getGroupsUsers(getUserDN(user), realm);
                         return addUsers(name, realm, groupsIdentity, attributeMap, delete);
                     } else
-                        debug.error(method + "utente nullo");
+                        logger.error(method + "utente nullo");
                 }
             }
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
         return false;
     }
@@ -492,19 +490,19 @@ public class CustomRepoUtil {
             throws IdRepoException, SSOException {
         String method = "[updateSpidUsers]:: ";
 
-        if (debug.messageEnabled()) {
-            debug.message(method + "parametri: usrIdentity[" + usrIdentity + "]");
+        {
+            logger.debug(method + "parametri: usrIdentity[" + usrIdentity + "]");
         }
 
         try {
             if (usrIdentity != null) {
                 return updateUsers(usrIdentity, attributeMap);
             } else
-                debug.error(method + "utente nullo");
+                logger.error(method + "utente nullo");
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
         return false;
     }
@@ -512,16 +510,16 @@ public class CustomRepoUtil {
     private boolean updateUsers(AMIdentity usrIdentity, Map<String, List<?>> attributeMap)
             throws IdRepoException, SSOException {
         String method = "[updateUsers]:: ";
-        if (debug.messageEnabled()) {
-            debug.message(method + "parametri: usrIdentity[" + usrIdentity + "]");
+        {
+            logger.debug(method + "parametri: usrIdentity[" + usrIdentity + "]");
         }
         if (adminToken == null)
             adminToken = AdminTokenAction.getInstance().run();
 
         try {
             // aggiorna l'utente
-            if (debug.messageEnabled())
-                debug.message(method + "inizio update utente [" + usrIdentity.getName() + "]... ");
+
+            logger.debug(method + "inizio update utente [" + usrIdentity.getName() + "]... ");
 
             if (attributeMap != null && !attributeMap.isEmpty()) {
                 Map<String, Set<String>> attrs = new HashMap<String, Set<String>>();
@@ -538,7 +536,7 @@ public class CustomRepoUtil {
                             vals.add((String) userVals[i]);
                         Set<String> actualAttrVal = usrIdentity.getAttribute(userAttr);
                         if (!userAttr.equalsIgnoreCase("userPassword")) {
-                            debug.message(
+                            logger.debug(
                                     method + "userAttr[" + userAttr + "] actualAttrVal: " + actualAttrVal.toString()
                                             + " vals[ " + vals + "]");
                         }
@@ -557,9 +555,9 @@ public class CustomRepoUtil {
                 }
             }
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
         return false;
     }
@@ -580,22 +578,22 @@ public class CustomRepoUtil {
             throws IdRepoException, SSOException {
         String method = "[addSpidUsers]:: ";
 
-        if (debug.messageEnabled()) {
-            debug.message(method + "parametri: name[" + name + "]");
-            debug.message(method + "parametri: realm[" + realm + "]");
-            debug.message(method + "parametri: baseDN[" + baseDN + "]");
-            debug.message(method + "parametri: usrContainerName[" + usrContainerName + "]");
+        {
+            logger.debug(method + "parametri: name[" + name + "]");
+            logger.debug(method + "parametri: realm[" + realm + "]");
+            logger.debug(method + "parametri: baseDN[" + baseDN + "]");
+            logger.debug(method + "parametri: usrContainerName[" + usrContainerName + "]");
         }
 
         try {
             if (name != null) {
                 return addUsers(name, realm, baseDN, usrContainerName, attributeMap);
             } else
-                debug.error(method + "utente nullo");
+                logger.error(method + "utente nullo");
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
         return false;
     }
@@ -605,11 +603,11 @@ public class CustomRepoUtil {
             throws IdRepoException, SSOException {
         String method = "[addUsers]:: ";
 
-        if (debug.messageEnabled()) {
-            debug.message(method + "parametri: name[" + name + "]");
-            debug.message(method + "parametri: realm[" + realm + "]");
-            debug.message(method + "parametri: baseDN[" + baseDN + "]");
-            debug.message(method + "parametri: usrContainerName[" + usrContainerName + "]");
+        {
+            logger.debug(method + "parametri: name[" + name + "]");
+            logger.debug(method + "parametri: realm[" + realm + "]");
+            logger.debug(method + "parametri: baseDN[" + baseDN + "]");
+            logger.debug(method + "parametri: usrContainerName[" + usrContainerName + "]");
         }
 
         if (adminToken == null)
@@ -617,8 +615,8 @@ public class CustomRepoUtil {
 
         try {
             // crea l'utente
-            if (debug.messageEnabled())
-                debug.message(method + "inizio creazione utente [" + name + "]... ");
+
+            logger.debug(method + "inizio creazione utente [" + name + "]... ");
 
             if (attributeMap != null && !attributeMap.isEmpty()) {
 
@@ -648,24 +646,23 @@ public class CustomRepoUtil {
                     IdRepo idRepo = getIdRepo(realm, null, baseDN, usrContainerName);
                     String ident = idRepo.create(adminToken, IdType.USER, name, attrs);
 
-                    if (debug.messageEnabled())
-                        debug.message(method + "ident: name[" + name + "] ident: " + ident);
+                    logger.debug(method + "ident: name[" + name + "] ident: " + ident);
                     return true;
                 } else {
                     if (adminToken != null) {
                         AMIdentityRepository idRepo = new AMIdentityRepository(realm, adminToken);
                         AMIdentity ident = idRepo.createIdentity(IdType.USER, name, attrs);
-                        if (debug.messageEnabled())
-                            debug.message(method + "ident: name[" + name + "] isExists: " + ident.isExists());
+
+                        logger.debug(method + "ident: name[" + name + "] isExists: " + ident.isExists());
                         return true;
                     }
                 }
 
             }
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
         return false;
     }
@@ -673,12 +670,12 @@ public class CustomRepoUtil {
     private boolean addUsers(String name, String realm, Object[] lGroups, Map<String, List<?>> attributeMap,
             boolean delete) throws IdRepoException, SSOException {
         String method = "[addUsers]:: ";
-        if (debug.messageEnabled()) {
-            debug.message(method + "parametri: name[" + name + "]");
-            debug.message(method + "parametri: realm[" + realm + "]");
-            debug.message(method + "parametri: lGroups[" + lGroups + "]");
-            // debug.message(method + "parametri: attributeMap[" + attributeMap + "]");
-            debug.message(method + "parametri: delete[" + delete + "]");
+        {
+            logger.debug(method + "parametri: name[" + name + "]");
+            logger.debug(method + "parametri: realm[" + realm + "]");
+            logger.debug(method + "parametri: lGroups[" + lGroups + "]");
+            // logger.debug(method + "parametri: attributeMap[" + attributeMap + "]");
+            logger.debug(method + "parametri: delete[" + delete + "]");
         }
 
         if (adminToken == null)
@@ -694,7 +691,7 @@ public class CustomRepoUtil {
                     if (users != null && !users.isEmpty()) // utente esistente
                     {
                         if (users.size() > 1) {
-                            debug.message(method + "trovate piu occorrenze sullo UserStore per name[" + name
+                            logger.debug(method + "trovate piu occorrenze sullo UserStore per name[" + name
                                     + "] e realm[" + realm + "]");
                             return false;
                         } else {
@@ -702,16 +699,16 @@ public class CustomRepoUtil {
                                 // utente da cancellare
                                 deleteUser(users.get(0), realm, getGroupsUsers(getUserDN(users.get(0)), realm));
                             } else {
-                                if (debug.messageEnabled())
-                                    debug.message(method + "utente gia esistente - delete FALSE: NON FA NIENTE!");
+
+                                logger.debug(method + "utente gia esistente - delete FALSE: NON FA NIENTE!");
                                 return true;
                             }
                         }
                     }
 
                     // crea l'utente
-                    if (debug.messageEnabled())
-                        debug.message(method + "inizio creazione utente [" + name + "]... ");
+
+                    logger.debug(method + "inizio creazione utente [" + name + "]... ");
 
                     if (attributeMap != null && !attributeMap.isEmpty()) {
                         Map<String, Set<String>> attrs = new HashMap<String, Set<String>>();
@@ -738,18 +735,18 @@ public class CustomRepoUtil {
 
                         // aggiunge l'utente ai gruppi
                         addUserGroups(ident, lGroups, realm);
-                        if (debug.messageEnabled())
-                            debug.message(method + "... fine creazione utente [" + name + "]");
+
+                        logger.debug(method + "... fine creazione utente [" + name + "]");
                         return true;
                     } else {
-                        debug.error(method + " Attributi utente non valorizzati!");
+                        logger.error(method + " Attributi utente non valorizzati!");
                     }
                 }
             }
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
         return false;
     }
@@ -762,12 +759,12 @@ public class CustomRepoUtil {
             throws IdRepoException, SSOException {
         String method = "[addCUSTOMUser]:: ";
 
-        if (debug.messageEnabled()) {
-            debug.message(method + "parametri: name[" + name + "]");
-            debug.message(method + "parametri: realm[" + realm + "]");
-            debug.message(method + "parametri: idRepoName[" + idRepoName + "]");
-            debug.message(method + "parametri: baseDN[" + baseDN + "]");
-            debug.message(method + "parametri: usrContainerName[" + usrContainerName + "]");
+        {
+            logger.debug(method + "parametri: name[" + name + "]");
+            logger.debug(method + "parametri: realm[" + realm + "]");
+            logger.debug(method + "parametri: idRepoName[" + idRepoName + "]");
+            logger.debug(method + "parametri: baseDN[" + baseDN + "]");
+            logger.debug(method + "parametri: usrContainerName[" + usrContainerName + "]");
         }
         if (adminToken == null)
             adminToken = AdminTokenAction.getInstance().run();
@@ -796,28 +793,27 @@ public class CustomRepoUtil {
 
                 if (attrs != null && !attrs.isEmpty()) {
                     // crea l'utente
-                    if (debug.messageEnabled()) {
-                        debug.message(method + "inizio creazione utente [" + name + "]... ");
+                    {
+                        logger.debug(method + "inizio creazione utente [" + name + "]... ");
                     }
 
                     AMIdentityRepository idRepo = new AMIdentityRepository(realm, adminToken);
                     if (idRepo != null) {
                         AMIdentity ident = idRepo.createIdentity(IdType.USER, name, attrs);
-                        if (debug.messageEnabled())
-                            debug.message(method + " identita creata [" + ident.getName() + "]");
+
+                        logger.debug(method + " identita creata [" + ident.getName() + "]");
                     }
 
-                    if (debug.messageEnabled())
-                        debug.message(method + "... fine creazione utente [" + name + "]");
+                    logger.debug(method + "... fine creazione utente [" + name + "]");
                     return true;
                 }
             } else {
-                debug.error(method + " Attributi utente non valorizzati!");
+                logger.error(method + " Attributi utente non valorizzati!");
             }
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
         return false;
     }
@@ -826,9 +822,8 @@ public class CustomRepoUtil {
             String strBaseDN, String usrContainerName, String attrNames) {
         String method = "[getCUSTOMUserAttribute]:: ";
 
-        if (debug.messageEnabled())
-            debug.message(method + " --------- ricerca utente [" + name + "] e idRepoName[" + idRepoName
-                    + "] e attrNames[" + attrNames + "] ------------ ");
+        logger.debug(method + " --------- ricerca utente [" + name + "] e idRepoName[" + idRepoName
+                + "] e attrNames[" + attrNames + "] ------------ ");
 
         if (adminToken == null)
             adminToken = AdminTokenAction.getInstance().run();
@@ -841,15 +836,15 @@ public class CustomRepoUtil {
             if (idRepo != null) {
                 Map<String, Set<String>> mapAttr = idRepo.getAttributes(adminToken, IdType.USER, name, attributeValue);
 
-                // if( debug.messageEnabled() )
-                // debug.message(method + "mapAttr: " + mapAttr);
+                // if( logger.debugEnabled() )
+                // logger.debug(method + "mapAttr: " + mapAttr);
                 return mapAttr;
-            } else if (debug.messageEnabled())
-                debug.message(method + "nessun idRepo " + idRepoName + " trovato!");
+            } else
+                logger.debug(method + "nessun idRepo " + idRepoName + " trovato!");
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
         return null;
     }
@@ -861,22 +856,22 @@ public class CustomRepoUtil {
             Map<String, Set<String>> configMap,
             String name) throws IdRepoException, SSOException {
         String method = "[constructIdRepoPlugin]:: ";
-        if (debug.messageEnabled()) {
-            debug.message(method + "parametri: orgName[" + orgName + "]");
-            // debug.message(method + "parametri: configMap[" + configMap + "]");
-            debug.message(method + "parametri: name[" + name + "]");
-            debug.message(method + "parametri: baseDN[" + baseDN + "]");
-            debug.message(method + "parametri: userContainerName[" + usrContainerName + "]");
+        {
+            logger.debug(method + "parametri: orgName[" + orgName + "]");
+            // logger.debug(method + "parametri: configMap[" + configMap + "]");
+            logger.debug(method + "parametri: name[" + name + "]");
+            logger.debug(method + "parametri: baseDN[" + baseDN + "]");
+            logger.debug(method + "parametri: userContainerName[" + usrContainerName + "]");
         }
 
         IdRepo answer = null;
-        if (debug.messageEnabled()) {
-            debug.message(method + "config=" + configMap.get("sunIdRepoClass"));
+        {
+            logger.debug(method + "config=" + configMap.get("sunIdRepoClass"));
         }
         if (configMap == null || configMap.isEmpty()) {
-            if (debug.warningEnabled()) {
-                debug.warning(method + "Cannot construct with empty config data");
-            }
+
+            logger.warn(method + "Cannot construct with empty config data");
+
             return (null);
         }
         Set<?> vals = (Set<?>) configMap.get(IdConstants.ID_REPO);
@@ -887,7 +882,7 @@ public class CustomRepoUtil {
                 DJLDAPv3RepoFactory factory = injector.getInstance(DJLDAPv3RepoFactory.class);
                 answer = factory.create(orgName, name);
             } catch (Throwable ex) {
-                debug.error(method + " OrgName: " + orgName + " ConfigMap: " + configMap, ex);
+                logger.error(method + " OrgName: " + orgName + " ConfigMap: " + configMap, ex);
                 throw (new IdRepoException(ex.getMessage()));
             }
 
@@ -920,11 +915,11 @@ public class CustomRepoUtil {
                             if (sUPCName != null && sUPCVal != null)
                                 sUserContainer = sUPCName + "=" + sUPCVal + ",";
                         } else {
-                            debug.error(method, "Malformed User Container Custom");
+                            logger.error(method, "Malformed User Container Custom");
                             return null;
                         }
                     } else {
-                        debug.error(method, "Malformed User Container Custom");
+                        logger.error(method, "Malformed User Container Custom");
                         return null;
                     }
                 }
@@ -945,8 +940,8 @@ public class CustomRepoUtil {
                     }
                 }
                 // configMap.put(SEARCH_BASE_CONF_NAME, val);
-                if (debug.messageEnabled()) {
-                    debug.message(method + "IdRepo base DN: " + Arrays.toString(val.toArray()));
+                {
+                    logger.debug(method + "IdRepo base DN: " + Arrays.toString(val.toArray()));
                 }
                 configMap.put(DS_ORGANIZATION_NAME_CONF_NAME, val);
             }
@@ -969,20 +964,20 @@ public class CustomRepoUtil {
     private IdRepo constructIdRepoPluginNew(String orgName, String baseDN, String usrContainerName, Map configMap,
             String name) throws IdRepoException, SSOException {
         String method = "[constructIdRepoPluginNew]:: ";
-        if (debug.messageEnabled()) {
-            debug.message(method + "parametri: orgName[" + orgName + "]");
-            debug.message(method + "parametri: name[" + name + "]");
-            debug.message(method + "parametri: baseDN[" + baseDN + "]");
-            debug.message(method + "parametri: userContainerName[" + usrContainerName + "]");
+        {
+            logger.debug(method + "parametri: orgName[" + orgName + "]");
+            logger.debug(method + "parametri: name[" + name + "]");
+            logger.debug(method + "parametri: baseDN[" + baseDN + "]");
+            logger.debug(method + "parametri: userContainerName[" + usrContainerName + "]");
         }
 
-        if (debug.messageEnabled()) {
-            debug.message("IdRepoPluginsCache.constructIdRepoPlugin: config=" + configMap.get("sunIdRepoClass"));
+        {
+            logger.debug("IdRepoPluginsCache.constructIdRepoPlugin: config=" + configMap.get("sunIdRepoClass"));
         }
         if ((configMap == null) || (configMap.isEmpty())) {
-            if (debug.warningEnabled()) {
-                debug.warning("IdRepoPluginsCache.constructIdRepoPlugin: Cannot construct with empty config data");
-            }
+
+            logger.warn("IdRepoPluginsCache.constructIdRepoPlugin: Cannot construct with empty config data");
+
             return null;
         }
         Set<String> classNames = (Set) configMap.get("sunIdRepoClass");
@@ -994,7 +989,7 @@ public class CustomRepoUtil {
             try {
                 idRepo = newIdRepo(className);
             } catch (Throwable ex) {
-                debug.error(
+                logger.error(
                         "IdRepoPluginsCached.constructIdRepoPlugin OrgName: " + orgName + " ConfigMap: " + configMap,
                         ex);
 
@@ -1030,11 +1025,11 @@ public class CustomRepoUtil {
                             if (sUPCName != null && sUPCVal != null)
                                 sUserContainer = sUPCName + "=" + sUPCVal + ",";
                         } else {
-                            debug.error(method, "Malformed User Container Custom");
+                            logger.error(method, "Malformed User Container Custom");
                             return null;
                         }
                     } else {
-                        debug.error(method, "Malformed User Container Custom");
+                        logger.error(method, "Malformed User Container Custom");
                         return null;
                     }
                 }
@@ -1055,8 +1050,8 @@ public class CustomRepoUtil {
                     }
                 }
                 // configMap.put(SEARCH_BASE_CONF_NAME, val);
-                if (debug.messageEnabled()) {
-                    debug.message(method + "IdRepo base DN: " + Arrays.toString(val.toArray()));
+                {
+                    logger.debug(method + "IdRepo base DN: " + Arrays.toString(val.toArray()));
                 }
                 configMap.put(DS_ORGANIZATION_NAME_CONF_NAME, val);
             }
@@ -1093,8 +1088,8 @@ public class CustomRepoUtil {
             throws IdRepoException, SSOException {
         String method = "[getIdRepo]:: ";
 
-        if (debug.messageEnabled()) {
-            debug.message(method + "called for orgName: " + orgName
+        {
+            logger.debug(method + "called for orgName: " + orgName
                     + " IdRepo scName: " + scName + "  baseDN: " + baseDN + " usrContainerName: " + usrContainerName);
         }
 
@@ -1106,7 +1101,7 @@ public class CustomRepoUtil {
             try {
                 ServiceConfig sc = idRepoServiceConfigManager.getOrganizationConfig(orgName, null);
                 if (sc == null) {
-                    debug.error(method + " orgName: " + orgName + " does not exisit");
+                    logger.error(method + " orgName: " + orgName + " does not exisit");
                     Object[] args = { orgName };
                     throw new IdRepoException(
                             IdRepoBundle.BUNDLE_NAME, "312", args);
@@ -1118,25 +1113,23 @@ public class CustomRepoUtil {
                                 .toArray(new String[sc.getSubConfigNames().size()]);
                         scName = aScName[0];
                     } else {
-                        if (debug.errorEnabled()) {
-                            debug.error(method + "DataStore name undefined for orgName: " + orgName + " sc name: "
-                                    + scName);
-                        }
+                        logger.error(method + "DataStore name undefined for orgName: " + orgName + " sc name: "
+                                + scName);
+
                         return null;
                     }
                 }
 
                 sc = sc.getSubConfig(scName);
                 if (sc == null) {
-                    debug.error(method + " orgName: " + orgName + " subConfig does not exisit: " + scName);
+                    logger.error(method + " orgName: " + orgName + " subConfig does not exisit: " + scName);
                     Object[] args = { orgName + ":" + scName };
                     throw new IdRepoException(IdRepoBundle.BUNDLE_NAME, "312", args);
                 }
                 configMap = sc.getAttributes();
             } catch (SMSException smse) {
-                if (debug.warningEnabled()) {
-                    debug.warning(method + "SMSException " + "for orgName: " + orgName + " sc name: " + scName, smse);
-                }
+
+                logger.warn(method + "SMSException " + "for orgName: " + orgName + " sc name: " + scName, smse);
                 return null;
             }
 
@@ -1144,7 +1137,7 @@ public class CustomRepoUtil {
 
             // Add to cache
             orgName = DNUtils.normalizeDN(orgName);
-            debug.message(method + " orgName normalizeDN: " + orgName); // TODO
+            logger.debug(method + " orgName normalizeDN: " + orgName); // TODO
             // synchronized (idrepoPlugins) {
             // Map<String, IdRepo> repos = (Map<String, IdRepo>) idrepoPlugins.get(orgName);
             // boolean addInternalRepos = false;
@@ -1157,7 +1150,7 @@ public class CustomRepoUtil {
             // }
             return repo;
         } else
-            debug.error(method + " orgName: " + orgName + " does not exisit!");
+            logger.error(method + " orgName: " + orgName + " does not exisit!");
         return null;
     }
 
@@ -1173,19 +1166,19 @@ public class CustomRepoUtil {
 
         String method = "[customAttributeCompany]:: ";
 
-        if (debug.messageEnabled()) {
-            debug.message(method + "aggiungo i parametri sul ds per l'utenza company");
+        {
+            logger.debug(method + "aggiungo i parametri sul ds per l'utenza company");
         }
 
-        debug.message(method + "aggiungo i parametri sul ds per l'utenza company");
+        logger.debug(method + "aggiungo i parametri sul ds per l'utenza company");
 
         Map<String, Set<String>> attrsCompany = new HashMap<String, Set<String>>();
 
         for (Entry<String, Set<String>> entry : attrs.entrySet()) {
 
             // MODIFICA LOG SPID AZIENDE
-            debug.message(method + "userAttr ---> " + entry.getKey());
-            debug.message(method + "vals ---> " + entry.getValue());
+            logger.debug(method + "userAttr ---> " + entry.getKey());
+            logger.debug(method + "vals ---> " + entry.getValue());
 
             // GESTIONE DEL CODICE FISCALE
             if (entry.getKey().equals("cdmCodiceFiscale")) {
