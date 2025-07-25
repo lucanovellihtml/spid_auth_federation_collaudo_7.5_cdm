@@ -5,7 +5,9 @@ import java.util.Map.Entry;
 
 import org.forgerock.guice.core.InjectorHolder;
 import org.forgerock.openam.idm.IdRepoAuditorFactory;
+import org.forgerock.openam.idrepo.ldap.DJLDAPv3RepoFactory;
 
+import com.google.inject.Injector;
 import com.iplanet.sso.SSOException;
 import com.iplanet.sso.SSOToken;
 import com.sun.identity.common.DNUtils;
@@ -641,12 +643,22 @@ public class CustomRepoUtil {
                     }
                 }
 
-                if (adminToken != null) {
-                    AMIdentityRepository idRepo = new AMIdentityRepository(realm, adminToken);
-                    AMIdentity ident = idRepo.createIdentity(IdType.USER, name, attrs);
+                if (baseDN != null || usrContainerName != null) {
+
+                    IdRepo idRepo = getIdRepo(realm, null, baseDN, usrContainerName);
+                    String ident = idRepo.create(adminToken, IdType.USER, name, attrs);
+
                     if (debug.messageEnabled())
-                        debug.message(method + "ident: name[" + name + "] isExists: " + ident.isExists());
+                        debug.message(method + "ident: name[" + name + "] ident: " + ident);
                     return true;
+                } else {
+                    if (adminToken != null) {
+                        AMIdentityRepository idRepo = new AMIdentityRepository(realm, adminToken);
+                        AMIdentity ident = idRepo.createIdentity(IdType.USER, name, attrs);
+                        if (debug.messageEnabled())
+                            debug.message(method + "ident: name[" + name + "] isExists: " + ident.isExists());
+                        return true;
+                    }
                 }
 
             }
@@ -787,23 +799,14 @@ public class CustomRepoUtil {
                     if (debug.messageEnabled()) {
                         debug.message(method + "inizio creazione utente [" + name + "]... ");
                     }
-                    /*
-                     * se e richiesta la creazione in un baseDN specifico (che faccia comunque parte
-                     * del DataStore)
-                     */
-                    if (baseDN != null || usrContainerName != null) {
-                        IdRepo idRepo = getIdRepo(realm, idRepoName, baseDN, usrContainerName);
-                        String ident = idRepo.create(adminToken, IdType.USER, name, attrs);
+
+                    AMIdentityRepository idRepo = new AMIdentityRepository(realm, adminToken);
+                    if (idRepo != null) {
+                        AMIdentity ident = idRepo.createIdentity(IdType.USER, name, attrs);
                         if (debug.messageEnabled())
-                            debug.message(method + " identita creata [" + ident + "]");
-                    } else {
-                        AMIdentityRepository idRepo = new AMIdentityRepository(realm, adminToken);
-                        if (idRepo != null) {
-                            AMIdentity ident = idRepo.createIdentity(IdType.USER, name, attrs);
-                            if (debug.messageEnabled())
-                                debug.message(method + " identita creata [" + ident.getName() + "]");
-                        }
+                            debug.message(method + " identita creata [" + ident.getName() + "]");
                     }
+
                     if (debug.messageEnabled())
                         debug.message(method + "... fine creazione utente [" + name + "]");
                     return true;
@@ -879,11 +882,10 @@ public class CustomRepoUtil {
         Set<?> vals = (Set<?>) configMap.get(IdConstants.ID_REPO);
         if ((vals != null) && !vals.isEmpty()) {
             String className = (String) vals.iterator().next();
-            Class<?> thisClass;
             try {
-                thisClass = Thread.currentThread().getContextClassLoader()
-                        .loadClass(className);
-                answer = (IdRepo) thisClass.getDeclaredConstructor().newInstance();
+                Injector injector = InjectorHolder.getInstance(Injector.class);
+                DJLDAPv3RepoFactory factory = injector.getInstance(DJLDAPv3RepoFactory.class);
+                answer = factory.create(orgName, name);
             } catch (Throwable ex) {
                 debug.error(method + " OrgName: " + orgName + " ConfigMap: " + configMap, ex);
                 throw (new IdRepoException(ex.getMessage()));
@@ -959,23 +961,6 @@ public class CustomRepoUtil {
             listener.setConfigMap(listenerConfig);
 
             answer.addListener(adminToken, listener);
-            /*** OLD ***/
-            /*
-             * // Add listener to this plugin class!
-             * Map<String, String> listenerConfig = new HashMap<String, String>();
-             * listenerConfig.put("realm", orgName);
-             * listenerConfig.put("plugin-name", name);
-             * if (className.equals(
-             * // IdConstants.AMSDK_PLUGIN)) {
-             * //TODO verificare!!
-             * AMSDK_PLUGIN)) {
-             * listenerConfig.put("amsdk", "true");
-             * }
-             * 
-             * IdRepoListener listener = new IdRepoListener();
-             * listener.setConfigMap(listenerConfig);
-             */
-
         }
         return (answer);
     }
