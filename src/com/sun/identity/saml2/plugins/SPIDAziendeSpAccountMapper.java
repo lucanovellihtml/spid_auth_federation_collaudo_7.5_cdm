@@ -192,7 +192,7 @@ public class SPIDAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccountMapp
     public SPIDAziendeSpAccountMapper() {
         super();
         if (logger == null) {
-            logger = LoggerFactory.getLogger(SPIDSpAccountMapper.class);
+            logger = LoggerFactory.getLogger(SPIDAziendeSpAccountMapper.class);
         }
 
         // get advanced properties
