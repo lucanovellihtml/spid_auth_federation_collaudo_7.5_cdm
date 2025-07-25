@@ -381,7 +381,10 @@ public class SPIDSpAdapter implements SPAdapter {
         oldMobile = postLoginFlags.get("oldMobile");
         oldStreet = postLoginFlags.get("oldStreet");
         // Flag aggiunto per la gestione del flusso toponomastica
-        addressChangedFlag = postLoginFlags.get("addressChangedFlag");
+        if (postLoginFlags.get("addressChangedFlag") != null)
+            addressChangedFlag = postLoginFlags.get("addressChangedFlag");
+        else
+            addressChangedFlag = "false";
 
         logger.debug(method + "recuperati postLoginFlags ");
 
