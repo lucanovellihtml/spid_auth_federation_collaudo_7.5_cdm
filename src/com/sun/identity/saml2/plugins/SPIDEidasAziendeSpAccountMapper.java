@@ -25,12 +25,14 @@ import com.sun.identity.saml2.protocol.Response;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.Month;
+
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.sun.identity.saml2.plugins.DefaultAttributeMapper.SP;
 
@@ -122,7 +124,7 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
 
     // MODIFICA LOG EIDAS AZIENDE
     private static String DBGNAME = "SPIDEidasAziendeSpAccountMapper";
-    private static com.sun.identity.shared.debug.Debug debug = null;
+    private static Logger logger = null;
 
     private static final String TINSUFF = "TINIT-";
 
@@ -176,56 +178,56 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
      */
     public SPIDEidasAziendeSpAccountMapper() {
         super();
-        if (debug == null) {
-            debug = com.sun.identity.shared.debug.Debug.getInstance(DBGNAME);
+        if (logger == null) {
+            logger = LoggerFactory.getLogger(SPIDEidasAziendeSpAccountMapper.class);
         }
 
         // get advanced properties
         String sEnableCreateFlag = SystemProperties.get(GLOBAL_PROP_CREATEUSER_ENABLE);
         if (sEnableCreateFlag == null || sEnableCreateFlag.trim().equals("")) {
             createUserEnable = false;
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_CREATEUSER_ENABLE + " undefined: use default value FALSE");
+
+            logger.debug(GLOBAL_PROP_CREATEUSER_ENABLE + " undefined: use default value FALSE");
         } else {
             createUserEnable = Boolean.parseBoolean(sEnableCreateFlag);
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_CREATEUSER_ENABLE + " value: " + createUserEnable);
+
+            logger.debug(GLOBAL_PROP_CREATEUSER_ENABLE + " value: " + createUserEnable);
         }
 
         userContainer = SystemProperties.get(GLOBAL_PROP_CREATEUSER_BASEDN);
         if (userContainer == null || userContainer.trim().equals("")) {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_CREATEUSER_BASEDN + " undefined.");
+
+            logger.debug(GLOBAL_PROP_CREATEUSER_BASEDN + " undefined.");
         } else {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_CREATEUSER_BASEDN + " value: " + userContainer);
+
+            logger.debug(GLOBAL_PROP_CREATEUSER_BASEDN + " value: " + userContainer);
         }
 
         String strAttributeName = SystemProperties.get(GLOBAL_PROP_CREATEUSER_ATTRIBUTE);
         if (strAttributeName == null || strAttributeName.trim().equals("")) {
             createUserAttr = new HashMap<String, String>();
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_CREATEUSER_ATTRIBUTE + " undefined: NO user Attribute default set");
+
+            logger.debug(GLOBAL_PROP_CREATEUSER_ATTRIBUTE + " undefined: NO user Attribute default set");
         } else {
             String[] aAttributesValue = strAttributeName.split(";");
             for (String attr : aAttributesValue) {
                 String[] aAttrValue = attr.split("=");
                 createUserAttr.put(aAttrValue[0], aAttrValue[1]);
             }
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_CREATEUSER_ATTRIBUTE + " value: " + createUserAttr);
+
+            logger.debug(GLOBAL_PROP_CREATEUSER_ATTRIBUTE + " value: " + createUserAttr);
         }
 
         /* CDM */
         String sSetCDMAttribute = SystemProperties.get(GLOBAL_PROP_CREATEUSER_SETCDMATTR);
         if (sSetCDMAttribute == null || sSetCDMAttribute.trim().equals("")) {
             setCDMAttribute = false;
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_CREATEUSER_SETCDMATTR + " undefined: use default value FALSE");
+
+            logger.debug(GLOBAL_PROP_CREATEUSER_SETCDMATTR + " undefined: use default value FALSE");
         } else {
             setCDMAttribute = Boolean.parseBoolean(sSetCDMAttribute);
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_CREATEUSER_SETCDMATTR + " value: " + setCDMAttribute);
+
+            logger.debug(GLOBAL_PROP_CREATEUSER_SETCDMATTR + " value: " + setCDMAttribute);
         }
 
         /*
@@ -234,12 +236,12 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
         String sUpdateCDMStatus = SystemProperties.get(GLOBAL_PROP_UPDATEUSER_SETCDMSTATUS);
         if (sUpdateCDMStatus == null || sUpdateCDMStatus.trim().equals("")) {
             updateCDMStatus = false;
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_UPDATEUSER_SETCDMSTATUS + " undefined: use default value FALSE");
+
+            logger.debug(GLOBAL_PROP_UPDATEUSER_SETCDMSTATUS + " undefined: use default value FALSE");
         } else {
             updateCDMStatus = Boolean.parseBoolean(sUpdateCDMStatus);
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_UPDATEUSER_SETCDMSTATUS + " value: " + updateCDMStatus);
+
+            logger.debug(GLOBAL_PROP_UPDATEUSER_SETCDMSTATUS + " value: " + updateCDMStatus);
         }
 
         /*
@@ -249,147 +251,145 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
         String sUpdateCDMUser = SystemProperties.get(GLOBAL_PROP_UPDATEUSER_FLAG);
         if (sUpdateCDMUser == null || sUpdateCDMUser.trim().equals("")) {
             updateCDMUser = false;
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_UPDATEUSER_FLAG + " undefined: use default value FALSE");
+
+            logger.debug(GLOBAL_PROP_UPDATEUSER_FLAG + " undefined: use default value FALSE");
         } else {
             updateCDMUser = Boolean.parseBoolean(sUpdateCDMUser);
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_UPDATEUSER_FLAG + " value: " + updateCDMUser);
+
+            logger.debug(GLOBAL_PROP_UPDATEUSER_FLAG + " value: " + updateCDMUser);
         }
 
         searchUserAttr = SystemProperties.get(GLOBAL_PROP_SEARCHUSER_ATTR);
         if (searchUserAttr == null || searchUserAttr.trim().equals("")) {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_SEARCHUSER_ATTR + " undefined.");
+
+            logger.debug(GLOBAL_PROP_SEARCHUSER_ATTR + " undefined.");
         } else {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_SEARCHUSER_ATTR + " value: " + searchUserAttr);
+
+            logger.debug(GLOBAL_PROP_SEARCHUSER_ATTR + " value: " + searchUserAttr);
         }
 
         searchPivaAttr = SystemProperties.get(GLOBAL_PROP_SEARCHPIVA_ATTR);
         if (searchPivaAttr == null || searchPivaAttr.trim().equals("")) {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_SEARCHPIVA_ATTR + " undefined.");
+
+            logger.debug(GLOBAL_PROP_SEARCHPIVA_ATTR + " undefined.");
         } else {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_SEARCHPIVA_ATTR + " value: " + searchPivaAttr);
+
+            logger.debug(GLOBAL_PROP_SEARCHPIVA_ATTR + " value: " + searchPivaAttr);
         }
 
         createUserWs = SystemProperties.get(GLOBAL_PROP_CREATEUSER_WS);
         if (createUserWs == null || createUserWs.trim().equals("")) {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_CREATEUSER_WS + " undefined.");
+
+            logger.debug(GLOBAL_PROP_CREATEUSER_WS + " undefined.");
         } else {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_CREATEUSER_WS + " value: " + createUserWs);
+
+            logger.debug(GLOBAL_PROP_CREATEUSER_WS + " value: " + createUserWs);
         }
 
         /*** IDM ***/
         idmRestURL = SystemProperties.get(GLOBAL_PROP_CREATEIDMUSER_WS);
         if (idmRestURL == null || idmRestURL.trim().equals("")) {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_CREATEIDMUSER_WS + " undefined.");
+
+            logger.debug(GLOBAL_PROP_CREATEIDMUSER_WS + " undefined.");
         } else {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_CREATEIDMUSER_WS + " value: " + idmRestURL);
+
+            logger.debug(GLOBAL_PROP_CREATEIDMUSER_WS + " value: " + idmRestURL);
         }
 
         idmRestURL_admin = SystemProperties.get(GLOBAL_PROP_IDMWS_USER);
         if (idmRestURL_admin == null || idmRestURL_admin.trim().equals("")) {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_IDMWS_USER + " undefined.");
+
+            logger.debug(GLOBAL_PROP_IDMWS_USER + " undefined.");
         } else {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_IDMWS_USER + " value: " + idmRestURL_admin);
+
+            logger.debug(GLOBAL_PROP_IDMWS_USER + " value: " + idmRestURL_admin);
         }
 
         idmRestURL_pwd = SystemProperties.get(GLOBAL_PROP_IDMWS_PWD);
         if (idmRestURL_pwd == null || idmRestURL_pwd.trim().equals("")) {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_IDMWS_PWD + " undefined.");
+
+            logger.debug(GLOBAL_PROP_IDMWS_PWD + " undefined.");
         } else {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_IDMWS_PWD + " value: " + idmRestURL_pwd);
+
+            logger.debug(GLOBAL_PROP_IDMWS_PWD + " value: " + idmRestURL_pwd);
         }
 
         stringUpdateUserAttr = SystemProperties.get(GLOBAL_PROP_UPDATEUSER_ATTRIBUTE);
         if (stringUpdateUserAttr == null || stringUpdateUserAttr.trim().equals("")) {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_UPDATEUSER_ATTRIBUTE + " undefined.");
+
+            logger.debug(GLOBAL_PROP_UPDATEUSER_ATTRIBUTE + " undefined.");
         } else {
-            if (debug.messageEnabled())
-                debug.message(GLOBAL_PROP_UPDATEUSER_ATTRIBUTE + " value: " + stringUpdateUserAttr);
+
+            logger.debug(GLOBAL_PROP_UPDATEUSER_ATTRIBUTE + " value: " + stringUpdateUserAttr);
         }
     }
 
     private void debugAdvancedPropertyVal() {
         String method = "[debugAdvancedPropertyVal]:: ";
 
-        if (debug.messageEnabled()) {
-            debug.message(method + "VERSIONE: " + JAR_VERSION);
+        logger.debug(method + "VERSIONE: " + JAR_VERSION);
 
-            debug.message(method + GLOBAL_PROP_CREATEUSER_ENABLE + " value: " + createUserEnable);
+        logger.debug(method + GLOBAL_PROP_CREATEUSER_ENABLE + " value: " + createUserEnable);
 
-            if (userContainer == null || userContainer.trim().equals("")) {
-                debug.message(GLOBAL_PROP_CREATEUSER_BASEDN + " undefined.");
-            } else {
-                debug.message(method + GLOBAL_PROP_CREATEUSER_BASEDN + " value: " + userContainer);
-            }
-
-            debug.message(method + GLOBAL_PROP_CREATEUSER_ATTRIBUTE + " value: " + createUserAttr);
-
-            /* CDM */
-            debug.message(method + GLOBAL_PROP_CREATEUSER_SETCDMATTR + " value: " + setCDMAttribute);
-
-            /*
-             * se impostato a true aggiorna lo stato utente ad Active ad ogni accesso SPID
-             */
-            debug.message(method + GLOBAL_PROP_UPDATEUSER_SETCDMSTATUS + " value: " + updateCDMStatus);
-
-            /*
-             * se impostato a true abilita la logica di aggiornamento utente ad ogni accesso
-             * SPID
-             */
-            debug.message(method + GLOBAL_PROP_UPDATEUSER_FLAG + " value: " + updateCDMUser);
-
-            if (searchUserAttr == null || searchUserAttr.trim().equals("")) {
-                debug.message(method + GLOBAL_PROP_SEARCHUSER_ATTR + " undefined.");
-            } else {
-                debug.message(method + GLOBAL_PROP_SEARCHUSER_ATTR + " value: " + searchUserAttr);
-            }
-
-            if (searchPivaAttr == null || searchPivaAttr.trim().equals("")) {
-                debug.message(method + GLOBAL_PROP_SEARCHPIVA_ATTR + " undefined.");
-            } else {
-                debug.message(method + GLOBAL_PROP_SEARCHPIVA_ATTR + " value: " + searchPivaAttr);
-            }
-
-            if (createUserWs == null || createUserWs.trim().equals("")) {
-                debug.message(method + GLOBAL_PROP_CREATEUSER_WS + " undefined.");
-            } else {
-                debug.message(method + GLOBAL_PROP_CREATEUSER_WS + " value: " + createUserWs);
-            }
-
-            /*** IDM ***/
-            if (idmRestURL == null || idmRestURL.trim().equals("")) {
-                debug.message(method + GLOBAL_PROP_CREATEIDMUSER_WS + " undefined.");
-            } else {
-                debug.message(method + GLOBAL_PROP_CREATEIDMUSER_WS + " value: " + idmRestURL);
-            }
-
-            if (idmRestURL_admin == null || idmRestURL_admin.trim().equals("")) {
-                debug.message(method + GLOBAL_PROP_IDMWS_USER + " undefined.");
-            } else {
-                debug.message(method + GLOBAL_PROP_IDMWS_USER + " value: " + idmRestURL_admin);
-            }
-
-            if (idmRestURL_pwd == null || idmRestURL_pwd.trim().equals("")) {
-                debug.message(method + GLOBAL_PROP_IDMWS_PWD + " undefined.");
-            } else {
-                debug.message(method + GLOBAL_PROP_IDMWS_PWD + " value: " + idmRestURL_pwd);
-            }
-
+        if (userContainer == null || userContainer.trim().equals("")) {
+            logger.debug(GLOBAL_PROP_CREATEUSER_BASEDN + " undefined.");
+        } else {
+            logger.debug(method + GLOBAL_PROP_CREATEUSER_BASEDN + " value: " + userContainer);
         }
+
+        logger.debug(method + GLOBAL_PROP_CREATEUSER_ATTRIBUTE + " value: " + createUserAttr);
+
+        /* CDM */
+        logger.debug(method + GLOBAL_PROP_CREATEUSER_SETCDMATTR + " value: " + setCDMAttribute);
+
+        /*
+         * se impostato a true aggiorna lo stato utente ad Active ad ogni accesso SPID
+         */
+        logger.debug(method + GLOBAL_PROP_UPDATEUSER_SETCDMSTATUS + " value: " + updateCDMStatus);
+
+        /*
+         * se impostato a true abilita la logica di aggiornamento utente ad ogni accesso
+         * SPID
+         */
+        logger.debug(method + GLOBAL_PROP_UPDATEUSER_FLAG + " value: " + updateCDMUser);
+
+        if (searchUserAttr == null || searchUserAttr.trim().equals("")) {
+            logger.debug(method + GLOBAL_PROP_SEARCHUSER_ATTR + " undefined.");
+        } else {
+            logger.debug(method + GLOBAL_PROP_SEARCHUSER_ATTR + " value: " + searchUserAttr);
+        }
+
+        if (searchPivaAttr == null || searchPivaAttr.trim().equals("")) {
+            logger.debug(method + GLOBAL_PROP_SEARCHPIVA_ATTR + " undefined.");
+        } else {
+            logger.debug(method + GLOBAL_PROP_SEARCHPIVA_ATTR + " value: " + searchPivaAttr);
+        }
+
+        if (createUserWs == null || createUserWs.trim().equals("")) {
+            logger.debug(method + GLOBAL_PROP_CREATEUSER_WS + " undefined.");
+        } else {
+            logger.debug(method + GLOBAL_PROP_CREATEUSER_WS + " value: " + createUserWs);
+        }
+
+        /*** IDM ***/
+        if (idmRestURL == null || idmRestURL.trim().equals("")) {
+            logger.debug(method + GLOBAL_PROP_CREATEIDMUSER_WS + " undefined.");
+        } else {
+            logger.debug(method + GLOBAL_PROP_CREATEIDMUSER_WS + " value: " + idmRestURL);
+        }
+
+        if (idmRestURL_admin == null || idmRestURL_admin.trim().equals("")) {
+            logger.debug(method + GLOBAL_PROP_IDMWS_USER + " undefined.");
+        } else {
+            logger.debug(method + GLOBAL_PROP_IDMWS_USER + " value: " + idmRestURL_admin);
+        }
+
+        if (idmRestURL_pwd == null || idmRestURL_pwd.trim().equals("")) {
+            logger.debug(method + GLOBAL_PROP_IDMWS_PWD + " undefined.");
+        } else {
+            logger.debug(method + GLOBAL_PROP_IDMWS_PWD + " value: " + idmRestURL_pwd);
+        }
+
     }
 
     public static Map<String, List<String>> getAttributeMap(String hostEntityID, String realm) throws SAML2Exception {
@@ -432,8 +432,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
 
         String format = nameID.getFormat();
         String remoteEntityID = assertion.getIssuer().getValue();
-        if (debug.messageEnabled())
-            debug.message(method + "assertion.getIssuer().getValue():" + remoteEntityID);
+
+        logger.debug(method + "assertion.getIssuer().getValue():" + remoteEntityID);
 
         List<Attribute> attributes = null;
         List<AttributeStatement> attributeStatements = assertion.getAttributeStatements();
@@ -447,12 +447,12 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
         }
 
         // MODIFICA LOG EIDAS AZIENDE
-        if (debug.messageEnabled()) {
-            for (Iterator<Attribute> iter = attributes.iterator(); iter.hasNext();) {
-                Attribute attribute = iter.next();
-                debug.error(method + " ATTRIBUTO ASSERTION ---> " + attribute.getName()
-                        + "// ATTRIBUTO ASSERTION VALUE ---> " + attribute.getAttributeValueString());
-            }
+
+        for (Iterator<Attribute> iter = attributes.iterator(); iter.hasNext();) {
+            Attribute attribute = iter.next();
+            logger.debug(method + " ATTRIBUTO ASSERTION ---> " + attribute.getName()
+                    + "// ATTRIBUTO ASSERTION VALUE ---> " + attribute.getAttributeValueString());
+
         }
 
         // LOGICA EIDAS
@@ -474,10 +474,10 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                     }
                 }
 
-                debug.error(method + "UserID: " + userID);
+                logger.debug(method + "UserID: " + userID);
 
             } catch (Exception e) {
-                debug.error(method + "Exception: ", e);
+                logger.error(method + "Exception: ", e);
             }
         }
 
@@ -489,9 +489,9 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
             users = repoUtil.getUserStoreIdentity(userID, realm);
 
             if (users != null && !users.isEmpty()) { // utente esistente
-                // debug.message(method + "_____users.size(): " + users.size());
+                // logger.debug(method + "_____users.size(): " + users.size());
                 if (users.size() == 1) {
-                    // debug.message(method + "assegna l'unico utente trovato!!! ");
+                    // logger.debug(method + "assegna l'unico utente trovato!!! ");
                     usrIdentity = users.get(0);
                 } else {
                     SAML2Exception se = new SAML2Exception(
@@ -504,9 +504,9 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                 /* CDM */
                 // aggiornare l'utente per update password ed inetuserstatus=Active
                 if (setCDMAttribute) {
-                    if (debug.messageEnabled())
-                        debug.message(method + "******* INIZIO Update Utente [" + usrIdentity.getName()
-                                + "] setCDMAttribute CDM ********");
+
+                    logger.debug(method + "******* INIZIO Update Utente [" + usrIdentity.getName()
+                            + "] setCDMAttribute CDM ********");
 
                     try {
                         Map<String, List<?>> userAttrMap = new HashMap<String, List<?>>();
@@ -515,9 +515,9 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                          * meno
                          **/
                         if (updateCDMStatus) {
-                            if (debug.messageEnabled())
-                                debug.message(method + "******* Update Utente [" + usrIdentity.getName()
-                                        + "] inetuserstatus=Active ********");
+
+                            logger.debug(method + "******* Update Utente [" + usrIdentity.getName()
+                                    + "] inetuserstatus=Active ********");
                             // inetuserstatus=Active
                             userAttrMap.put(ENABLE_ATTR, Arrays.asList("Active"));
                         }
@@ -531,23 +531,23 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                                     if (!getAttrFromSet(usrIdentity.getAttribute(arrayValue[0]))
                                             .equals(arrayValue[1])) {
                                         userAttrMap.put(arrayValue[0], Arrays.asList(arrayValue[1]));
-                                        if (debug.messageEnabled())
-                                            debug.message(method + "staticAttrName[" + arrayValue[0]
-                                                    + "] staticAttrVal[" + arrayValue[1] + "]");
+
+                                        logger.debug(method + "staticAttrName[" + arrayValue[0]
+                                                + "] staticAttrVal[" + arrayValue[1] + "]");
                                     }
                                 }
                             }
                         } else {
-                            if (debug.messageEnabled())
-                                debug.message(method + GLOBAL_PROP_UPDATEUSER_ATTRIBUTE
-                                        + " undefined: NO user Attribute default set");
+
+                            logger.debug(method + GLOBAL_PROP_UPDATEUSER_ATTRIBUTE
+                                    + " undefined: NO user Attribute default set");
                         }
 
                         // password
                         userAttrMap.put(PWD_ATTR, Arrays.asList(setPassword()));
-                        if (debug.messageEnabled())
-                            debug.message(method + "******* FINE Update Utente [" + usrIdentity.getName()
-                                    + "] setCDMAttribute CDM ********");
+
+                        logger.debug(method + "******* FINE Update Utente [" + usrIdentity.getName()
+                                + "] setCDMAttribute CDM ********");
 
                         if (updateCDMUser) {
                             // nuova logica di update
@@ -557,7 +557,7 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                                 e.printStackTrace();
                             }
                             if (!updateSPIDUsers(usrIdentity, userAttrMap, map)) {
-                                debug.error(method + "Errore aggiornamento utente [" + usrIdentity.getName()
+                                logger.error(method + "Errore aggiornamento utente [" + usrIdentity.getName()
                                         + "]: errore chiamata Rest IDM");
                                 SAML2Exception se = new SAML2Exception(
                                         "FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
@@ -568,7 +568,7 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                         } else {
                             // vecchia gestione
                             if (!repoUtil.updateSpidUsers(usrIdentity, userAttrMap)) {
-                                debug.error(method + "FEDERATION_FAILED_WRITING_ACCOUNT [" + usrIdentity.getName()
+                                logger.error(method + "FEDERATION_FAILED_WRITING_ACCOUNT [" + usrIdentity.getName()
                                         + "]: errore scrittura UserStore");
                                 SAML2Exception se = new SAML2Exception(
                                         "FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
@@ -578,8 +578,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                             }
                         }
                     } catch (SSOException | IdRepoException e) {
-                        debug.error(method, e.getLocalizedMessage());
-                        debug.error(method + "FEDERATION_FAILED_WRITING_ACCOUNT [" + usrIdentity.getName()
+                        logger.error(method, e.getLocalizedMessage());
+                        logger.error(method + "FEDERATION_FAILED_WRITING_ACCOUNT [" + usrIdentity.getName()
                                 + "]: errore scrittura UserStore");
                         SAML2Exception se = new SAML2Exception(
                                 "FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
@@ -587,19 +587,18 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                     }
                 } else {
                     // se l'utente esiste ritorna l'accountID
-                    if (debug.messageEnabled())
-                        debug.message(
-                                method + "Utente [" + usrIdentity.getName() + "] aggiornato - Federazione completata");
+
+                    logger.debug(
+                            method + "Utente [" + usrIdentity.getName() + "] aggiornato - Federazione completata");
                 }
 
                 return usrIdentity.getName();
 
             } else if (createUserEnable) {
                 // CREA L'UTENTE SPID SULLO USER STORE
-                if (debug.messageEnabled()) {
-                    debug.error(method + "L'utente " + userID + " non risulta censito a sistema");
-                    debug.error(method + "attributes [" + attributes + " ]");
-                }
+
+                logger.debug(method + "L'utente " + userID + " non risulta censito a sistema");
+                logger.debug(method + "attributes [" + attributes + " ]");
 
                 if (createUserWs != null) {
                     /** richiama un WS di creazione utenza che si occupa anche dello UserStore **/
@@ -611,7 +610,7 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                     try {
                         attributeMap = setUserAttrMap(map, attributes, userID);
                         if (!repoUtil.addSpidUsers(userID, realm, null, userContainer, attributeMap)) {
-                            debug.error(method + " utente [" + userID
+                            logger.error(method + " utente [" + userID
                                     + "] FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
                             SAML2Exception se = new SAML2Exception(
                                     "FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
@@ -619,12 +618,12 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                         } else {
                             // imposta il flag ad indicare che l'utenza � stata creata
                             // flagCreato();
-                            debug.message(method + "Utente [" + userID + "] creato - Federazione completata");
+                            logger.debug(method + "Utente [" + userID + "] creato - Federazione completata");
                             return userID;
                         }
                     } catch (SSOException | IdRepoException | ParseException e) {
-                        debug.error(method, e.getLocalizedMessage());
-                        debug.error(method + " utente [" + userID
+                        logger.error(method, e.getLocalizedMessage());
+                        logger.error(method + " utente [" + userID
                                 + "] FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
                         SAML2Exception se = new SAML2Exception(
                                 "FEDERATION_FAILED_WRITING_ACCOUNT: errore scrittura UserStore");
@@ -640,13 +639,12 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
     private Map<String, List<?>> setUserAttrMap(Map<String, List<String>> attributeMap, List<Attribute> attributes,
             String userID) throws ParseException {
         String method = "[setUserAttrMap]";
-        if (debug.messageEnabled())
-            debug.message(method + "inizio ... ");
+
+        logger.debug(method + "inizio ... ");
 
         Map<String, List<?>> userAttrMap = new HashMap<String, List<?>>();
 
-        if (debug.messageEnabled())
-            debug.message(method + "******* INIZIO Iterator User [" + userID + "] - Attributi Asserzione ********");
+        logger.debug(method + "******* INIZIO Iterator User [" + userID + "] - Attributi Asserzione ********");
         for (Iterator<Attribute> iter = attributes.iterator(); iter.hasNext();) {
             Attribute attribute = iter.next();
             // DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
@@ -662,9 +660,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                             userAttrMap.put(getCorrAttrLDAP(attributeMap, "fiscalNumber"),
                                     Arrays.asList(codfisc.substring(TINSUFF.length())));
 
-                            if (debug.messageEnabled())
-                                debug.error(method + "Attr Assertion MAP - fiscalNumber: "
-                                        + codfisc.substring(TINSUFF.length()));
+                            logger.debug(method + "Attr Assertion MAP - fiscalNumber: "
+                                    + codfisc.substring(TINSUFF.length()));
                         }
                         /*
                          * } else if (attribute.getName().equalsIgnoreCase("name") &&
@@ -708,17 +705,17 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                          * userAttrMap.put(attribute.getName(), attribute.getAttributeValueString() );
                          * } else if (attribute.getName().equalsIgnoreCase("dateOfBirth") &&
                          * attribute.getAttributeValueString() != null){
-                         * if (debug.messageEnabled())
-                         * debug.message(method + " -- (dataNascDate): " +
+                         * 
+                         * logger.debug(method + " -- (dataNascDate): " +
                          * attribute.getAttributeValueString() );
                          * Date dataNascDate =
                          * dateFormat.parse(getAttrAssertion(attribute.getAttributeValueString()));
-                         * if (debug.messageEnabled())
-                         * debug.message(method + " -- (dataNascDate): " + dataNascDate );
+                         * 
+                         * logger.debug(method + " -- (dataNascDate): " + dataNascDate );
                          * String pattern = "yyyyMMdd000000";
                          * SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
-                         * if (debug.messageEnabled())
-                         * debug.message(method + "simpleDateFormat.format(dataNascDate): " +
+                         * 
+                         * logger.debug(method + "simpleDateFormat.format(dataNascDate): " +
                          * simpleDateFormat.format(dataNascDate));
                          * userAttrMap.put(getCorrAttrLDAP(attributeMap, attribute.getName()),
                          * Arrays.asList( simpleDateFormat.format(dataNascDate) ));
@@ -746,9 +743,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                             userAttrMap.put(CDM_COMPANY_FISCAL_NUMBER_ATTRNAME,
                                     Arrays.asList(ivaCodeSpidAziende.substring(TINSUFF.length())));
 
-                        if (debug.messageEnabled())
-                            debug.message(method + "Attr Assertion MAP - " + CDM_COMPANY_FISCAL_NUMBER_ATTRNAME + " : "
-                                    + ivaCodeSpidAziende.substring(TINSUFF.length()));
+                        logger.debug(method + "Attr Assertion MAP - " + CDM_COMPANY_FISCAL_NUMBER_ATTRNAME + " : "
+                                + ivaCodeSpidAziende.substring(TINSUFF.length()));
                     } else {
                         // userAttrMap.put( getCorrAttrLDAP(attributeMap, attribute.getName()),
                         // Arrays.asList( attribute.getAttributeValueString()) );
@@ -756,22 +752,22 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                         // String attrLDAP = getCorrAttrLDAP(attributeMap, attribute.getName());
                         String attrLDAPVal = getAttrAssertion(attribute.getAttributeValueString());
                         for (String attrLDAP : lAttrLDAP) {
-                            if (debug.messageEnabled())
-                                debug.message(
-                                        method + "Generic Attr Assertion MAP - " + attrLDAP + " : " + attrLDAPVal);
+
+                            logger.debug(
+                                    method + "Generic Attr Assertion MAP - " + attrLDAP + " : " + attrLDAPVal);
                             userAttrMap.put(attrLDAP, Arrays.asList(attrLDAPVal));
                         }
                     }
                 } // MODIFICA AGGIUNTA PER GESTIONE IDP POSTE
             }
         }
-        if (debug.messageEnabled())
-            debug.message(method + "******* FINE Iterator User [" + userID + "] - Attributi Asserzione ********");
+
+        logger.debug(method + "******* FINE Iterator User [" + userID + "] - Attributi Asserzione ********");
 
         /* CDM */
         if (setCDMAttribute) {
-            if (debug.messageEnabled())
-                debug.message(method + "******* INIZIO setCDMAttribute User [" + userID + "] - Attributi CDM ********");
+
+            logger.debug(method + "******* INIZIO setCDMAttribute User [" + userID + "] - Attributi CDM ********");
 
             // MODIFICA LOG EIDAS AZIENDE
             // //CN
@@ -809,40 +805,40 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                     }
 
                     /*
-                     * if (debug.messageEnabled())
-                     * debug.message(method + "----- sAddress: " + sAddress);
+                     * 
+                     * logger.debug(method + "----- sAddress: " + sAddress);
                      * // if(sAddress.indexOf(":") != -1){
                      * // String[] valueArray = sAddress.split(":");
                      * // String addressString = valueArray[1];
                      * String addressString = sAddress;
                      * addressString = addressString.replace(" \"","").replace("\"","");
-                     * debug.message(method + "----- sAddress (2): " + addressString);
+                     * logger.debug(method + "----- sAddress (2): " + addressString);
                      * int postalCodeIndex = addressString.indexOf("[^0-9]+");
                      * if ( postalCodeIndex != -1 ){
                      * if( addressString.length() >= 5 ){
                      * String sPostalCode = addressString.substring(postalCodeIndex, 5);
-                     * debug.message(method + "----- sAddress (postalCode): " + sPostalCode);
+                     * logger.debug(method + "----- sAddress (postalCode): " + sPostalCode);
                      * userAttrMap.put("postalCode" , Arrays.asList( sPostalCode ));
                      * }else
-                     * debug.error(method, "errore assegnazione indirizzo da asserzione - " +
+                     * logger.error(method, "errore assegnazione indirizzo da asserzione - " +
                      * addressString.length() + " minore di 5." );
                      * // st
                      * String sSt = addressString.substring(addressString.length() - 2) ;
-                     * debug.message(method + "----- sAddress (st): " + sSt);
+                     * logger.debug(method + "----- sAddress (st): " + sSt);
                      * userAttrMap.put("st" , Arrays.asList( sSt ) );
                      * 
                      * // street
                      * String sStreet = addressString.substring(0, postalCodeIndex - 1) ;
-                     * debug.message(method + "----- sAddress (sStreet): " + sStreet);
+                     * logger.debug(method + "----- sAddress (sStreet): " + sStreet);
                      * userAttrMap.put("street" , Arrays.asList( sStreet ));
                      * }else{
-                     * debug.message(method + "----- sAddress (sAddress): " + sAddress);
+                     * logger.debug(method + "----- sAddress (sAddress): " + sAddress);
                      * userAttrMap.put("street" , Arrays.asList( sAddress ));
                      * }
                      */
                     // }
                 } catch (IndexOutOfBoundsException ex) {
-                    debug.error(method, ex.getLocalizedMessage());
+                    logger.error(method, ex.getLocalizedMessage());
                 }
             }
 
@@ -852,13 +848,13 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
              */
             if (getAttrAssertion(util.getAttributeVal(attributes, "registeredOffice")) != null) {
 
-                debug.error("registeredOffice ---> "
+                logger.debug("registeredOffice ---> "
                         + getAttrAssertion(util.getAttributeVal(attributes, "registeredOffice")));
 
                 try {
                     String sAddress = getAttrAssertion(util.getAttributeVal(attributes, "registeredOffice"));
 
-                    debug.error("Address ---> " + sAddress);
+                    logger.debug("Address ---> " + sAddress);
 
                     Map<String, String> mAddress = getAddressElementOffice(sAddress);
 
@@ -869,7 +865,7 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                         userAttrMap.put("cdmSedeComune", Arrays.asList(mAddress.get("cdmSedeComune").toString()));
                     }
                 } catch (IndexOutOfBoundsException ex) {
-                    debug.error(method, ex.getLocalizedMessage());
+                    logger.error(method, ex.getLocalizedMessage());
                 }
             }
 
@@ -878,8 +874,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                     !getAttrAssertion(util.getAttributeVal(attributes, "dateOfBirth")).isEmpty()) {
                 DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
                 String sdataNascDate = getAttrAssertion(util.getAttributeVal(attributes, "dateOfBirth"));
-                if (debug.messageEnabled())
-                    debug.message(method + " -- (sdataNascDate): " + sdataNascDate);
+
+                logger.debug(method + " -- (sdataNascDate): " + sdataNascDate);
                 Date dataNascDate = dateFormat.parse(sdataNascDate);
 
                 // cdmNascitaDataOld
@@ -896,8 +892,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
             if (getAttrAssertion(util.getAttributeVal(attributes, "email")) != null &&
                     !getAttrAssertion(util.getAttributeVal(attributes, "email")).isEmpty()) {
                 String sSpidEmail = getAttrAssertion(util.getAttributeVal(attributes, "email"));
-                if (debug.messageEnabled())
-                    debug.message(method + " -- (" + SPID_MAIL_ATTR + "): " + sSpidEmail);
+
+                logger.debug(method + " -- (" + SPID_MAIL_ATTR + "): " + sSpidEmail);
 
                 userAttrMap.put(SPID_MAIL_ATTR, Arrays.asList(sSpidEmail));
             }
@@ -911,8 +907,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
             // !getAttrAssertion(util.getAttributeVal(attributes, "email")).isEmpty()) {
             // String sSpidAziendeEmail = getAttrAssertion(util.getAttributeVal(attributes,
             // "email"));
-            // if (debug.messageEnabled())
-            // debug.message(method + " -- (" + CDM_EMAIL_DELEGATO_ATTR + "): " +
+            //
+            // logger.debug(method + " -- (" + CDM_EMAIL_DELEGATO_ATTR + "): " +
             // sSpidAziendeEmail);
             //
             // userAttrMap.put(CDM_EMAIL_DELEGATO_ATTR, Arrays.asList(sSpidAziendeEmail));
@@ -929,8 +925,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
             // {
             // String sSpidAziendeMobile = getAttrAssertion(util.getAttributeVal(attributes,
             // "mobilePhone"));
-            // if (debug.messageEnabled())
-            // debug.message(method + " -- (" + CDM_MOBILE_PHONE_DELEGATO_ATTR + "): " +
+            //
+            // logger.debug(method + " -- (" + CDM_MOBILE_PHONE_DELEGATO_ATTR + "): " +
             // sSpidAziendeMobile);
             //
             // userAttrMap.put(CDM_MOBILE_PHONE_DELEGATO_ATTR,
@@ -941,32 +937,32 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
             if (getAttrAssertion(util.getAttributeVal(attributes, "mobilePhone")) != null &&
                     !getAttrAssertion(util.getAttributeVal(attributes, "mobilePhone")).isEmpty()) {
                 String sSpidMobile = getAttrAssertion(util.getAttributeVal(attributes, "mobilePhone"));
-                if (debug.messageEnabled())
-                    debug.message(method + " -- (" + SPID_MOBILE_ATTR + "): " + sSpidMobile);
+
+                logger.debug(method + " -- (" + SPID_MOBILE_ATTR + "): " + sSpidMobile);
 
                 userAttrMap.put(SPID_MOBILE_ATTR, Arrays.asList(sSpidMobile));
             }
 
             userAttrMap.put(PWD_ATTR, Arrays.asList(setPassword()));
-            if (debug.messageEnabled())
-                debug.message(method + "******* FINE setCDMAttribute User [" + userID + "] - Attributi CDM ********");
+
+            logger.debug(method + "******* FINE setCDMAttribute User [" + userID + "] - Attributi CDM ********");
         }
 
         if (createUserAttr != null && !createUserAttr.isEmpty()) {
-            if (debug.messageEnabled())
-                debug.message(
-                        method + "******* INIZIO setCDMAttribute User [" + userID + "] - Attributi Statici ********");
+
+            logger.debug(
+                    method + "******* INIZIO setCDMAttribute User [" + userID + "] - Attributi Statici ********");
             // se esistono attributi di default li imposta
             for (Entry<String, String> entry : createUserAttr.entrySet()) {
                 String defaultAttr = entry.getKey();
                 String defaultAttrVal = entry.getValue();
-                if (debug.messageEnabled())
-                    debug.message(method + "defaultAttr[" + defaultAttr + "] defaultAttrVal[" + defaultAttrVal + "]");
+
+                logger.debug(method + "defaultAttr[" + defaultAttr + "] defaultAttrVal[" + defaultAttrVal + "]");
                 userAttrMap.put(defaultAttr, Arrays.asList(defaultAttrVal));
             }
-            if (debug.messageEnabled())
-                debug.message(
-                        method + "******* FINE setCDMAttribute User [" + userID + "] - Attributi Statici ********");
+
+            logger.debug(
+                    method + "******* FINE setCDMAttribute User [" + userID + "] - Attributi Statici ********");
         }
 
         return userAttrMap;
@@ -984,8 +980,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
      */
     private static Map<String, String> getAddressElement(String sAddress) {
         String method = "getAddressElement::";
-        if (debug.messageEnabled())
-            debug.message(method + "--------  Address: " + sAddress + " ------------");
+
+        logger.debug(method + "--------  Address: " + sAddress + " ------------");
         Map<String, String> mAddress = new ArrayMap<>();
 
         if (sAddress != null && !sAddress.isEmpty() && !sAddress.equalsIgnoreCase("null")) {
@@ -1005,15 +1001,15 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
 
                         String sSt = sSplitAddress.substring(sSplitAddress.length() - 2);
                         mAddress.put("st", sSt);
-                        if (debug.messageEnabled()) {
-                            debug.message(method + "st[" + sSt + "]");
-                            debug.message(method + "postalCode[" + postalCode + "]");
-                        }
+
+                        logger.debug(method + "st[" + sSt + "]");
+                        logger.debug(method + "postalCode[" + postalCode + "]");
+
                         return mAddress;
                     }
                 }
             } catch (IndexOutOfBoundsException ex) {
-                debug.error(method + ex.getLocalizedMessage());
+                logger.error(method + ex.getLocalizedMessage());
             }
         }
         mAddress.put("default", sAddress); // se non si riesce a prasare ritorna la stringa originale
@@ -1033,14 +1029,14 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
      */
     private static Map<String, String> getAddressElementOffice(String sAddress) {
         String method = "getAddressElementOffice::";
-        if (debug.messageEnabled())
-            debug.message(method + "--------  Address: " + sAddress + " ------------");
+
+        logger.debug(method + "--------  Address: " + sAddress + " ------------");
         Map<String, String> mAddress = new ArrayMap<>();
         if (sAddress != null && !sAddress.isEmpty() && !sAddress.equalsIgnoreCase("null")) {
 
             try {
                 String addressReplace = sAddress.replace(" ", "/");
-                debug.error("INDIRIZZO ---> " + addressReplace);
+                logger.debug("INDIRIZZO ---> " + addressReplace);
                 String sSplitAddress = sAddress.replace("/", "");
                 String[] sListAddress = addressReplace.split("/");
 
@@ -1056,7 +1052,7 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                         int position = sListAddress.length - 2;
 
                         for (int i = 0; i < sListAddress.length; i++) {
-                            debug.error(sListAddress[i]);
+                            logger.error(sListAddress[i]);
                         }
 
                         String sComune = sListAddress[position];
@@ -1064,21 +1060,15 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
 
                         String sSt = sSplitAddress.substring(sSplitAddress.length() - 2);
                         mAddress.put("cdmSedeProvincia", sSt);
-                        if (debug.messageEnabled()) {
-                            debug.message(method + "cdmSedeProvincia[" + sSt + "]");
-                            debug.message(method + "cdmSedeCap[" + postalCode + "]");
-                        }
 
-                        debug.error(method + "cdmSedeProvincia[" + sSt + "]");
-                        debug.error(method + "cdmSedeCap[" + postalCode + "]");
-                        debug.error(method + "cdmSedeVia[" + sStreet + "]");
-                        debug.error(method + "cdmSedeComune[" + sComune + "]");
+                        logger.debug(method + "cdmSedeProvincia[" + sSt + "]");
+                        logger.debug(method + "cdmSedeCap[" + postalCode + "]");
 
                         return mAddress;
                     }
                 }
             } catch (IndexOutOfBoundsException ex) {
-                debug.error(method + ex.getLocalizedMessage());
+                logger.error(method + ex.getLocalizedMessage());
             }
         }
         mAddress.put("default", sAddress); // se non si riesce a prasare ritorna la stringa originale
@@ -1137,7 +1127,7 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
         int indice = stringa.indexOf(postalCode);
         if (indice > 0 && indice < stringa.length()) {
             String sStreet = stringa.substring(0, indice);
-            debug.message(method + "street[" + sStreet + "]");
+            logger.debug(method + "street[" + sStreet + "]");
             return sStreet.trim();
         } else
             return stringa;
@@ -1155,9 +1145,9 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
             String assertionAttr = entry.getKey();
             List<String> luserAttr = entry.getValue();
 
-            // if(debug.messageEnabled()){
-            // debug.message(method + "assertionAttr: " + assertionAttr );
-            // debug.message(method + "luserAttr: " + luserAttr );
+            // if(logger.debugEnabled()){
+            // logger.debug(method + "assertionAttr: " + assertionAttr );
+            // logger.debug(method + "luserAttr: " + luserAttr );
             // }
 
             if (assertionAttr.equalsIgnoreCase(assertionAttrName)) {
@@ -1181,10 +1171,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
             String assertionAttr = entry.getKey();
             List<String> luserAttr = entry.getValue();
 
-            if (debug.messageEnabled()) {
-                debug.message(method + "assertionAttr: " + assertionAttr);
-                debug.message(method + "luserAttr: " + luserAttr);
-            }
+            logger.debug(method + "assertionAttr: " + assertionAttr);
+            logger.debug(method + "luserAttr: " + luserAttr);
 
             if (assertionAttr.equalsIgnoreCase(assertionAttrName)) {
                 return luserAttr;
@@ -1204,7 +1192,7 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                         && attribute.getAttributeValueString() != null) {
                     String codfisc = getAttrAssertion(attribute.getAttributeValueString());
                     if (codfisc != null && codfisc.length() >= TINSUFF.length()) {
-                        // debug.message(method + "[" + attribute.getName() + "]["+
+                        // logger.debug(method + "[" + attribute.getName() + "]["+
                         // getAttrAssertion(attribute.getAttributeValueString()) + "]");
                         return codfisc.substring(TINSUFF.length());
                     }
@@ -1262,21 +1250,20 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
         String method = "[getConfigAttributeMap]:: ";
 
         if (realm == null) {
-            debug.error(method + "nullRealm");
+            logger.error(method + "nullRealm");
             return null;
         }
 
         if (hostEntityID == null) {
-            debug.error(method + "nullHostEntityID");
+            logger.error(method + "nullHostEntityID");
             return null;
         }
 
         SAML2MetaManager saml2MetaManager = SAML2Utils.getSAML2MetaManager();
 
-        if (debug.messageEnabled()) {
-            debug.message(method + " DefaultAttrMapper: realm=" + realm + ", entity id=" +
-                    hostEntityID + ", role=" + role);
-        }
+        logger.debug(method + " DefaultAttrMapper: realm=" + realm + ", entity id=" +
+                hostEntityID + ", role=" + role);
+
         try {
             Map<?, ?> attribConfig = null;
             IDPSSOConfigElement IDPSSOconfig = null;
@@ -1284,18 +1271,16 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
             if (role.equals(SAML2Constants.SP_ROLE)) {
                 SPSSOconfig = saml2MetaManager.getSPSSOConfig(realm, hostEntityID);
                 if (SPSSOconfig == null) {
-                    if (debug.warningEnabled()) {
-                        debug.warning(method + "configuration is not defined.");
-                    }
+
+                    logger.warn(method + "configuration is not defined.");
+
                     return Collections.emptyMap();
                 }
                 attribConfig = SAML2MetaUtils.getAttributes(SPSSOconfig);
             } else if (role.equals(SAML2Constants.IDP_ROLE)) {
                 IDPSSOconfig = saml2MetaManager.getIDPSSOConfig(realm, hostEntityID);
                 if (IDPSSOconfig == null) {
-                    if (debug.warningEnabled()) {
-                        debug.warning(method + "configuration is not defined.");
-                    }
+                    logger.warn(method + "configuration is not defined.");
                     return Collections.emptyMap();
                 }
                 attribConfig = SAML2MetaUtils.getAttributes(IDPSSOconfig);
@@ -1304,11 +1289,11 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
             List<?> mappedAttributes = (List<?>) attribConfig.get(SAML2Constants.ATTRIBUTE_MAP);
 
             if ((mappedAttributes == null) || (mappedAttributes.size() == 0)) {
-                if (debug.messageEnabled()) {
-                    debug.message(method +
-                            "Attribute map is not defined for entity: " +
-                            hostEntityID);
-                }
+
+                logger.debug(method +
+                        "Attribute map is not defined for entity: " +
+                        hostEntityID);
+
                 return Collections.emptyMap();
             }
             Map<String, List<String>> map = new HashMap<String, List<String>>();
@@ -1317,9 +1302,9 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                 String entry = (String) iter.next();
 
                 if (entry.indexOf("=") == -1) {
-                    if (debug.messageEnabled()) {
-                        debug.message(method + "Invalid entry." + entry);
-                    }
+
+                    logger.debug(method + "Invalid entry." + entry);
+
                     continue;
                 }
 
@@ -1338,7 +1323,7 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
             return map;
 
         } catch (SAML2MetaException sme) {
-            debug.error(method, sme);
+            logger.error(method, sme);
             throw new SAML2Exception(sme.getMessage());
         }
     }
@@ -1357,15 +1342,14 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
             Map<String, List<String>> attributeSPIDMap)
             throws IdRepoException, SSOException {
         String method = "[updateSPIDUsers]:: ";
-        if (debug.messageEnabled()) {
-            debug.message(method + "parametri: usrIdentity[" + usrIdentity + "]");
-            // debug.message(method + "attributeMap [" + attributeMap + " ]");
-        }
+
+        logger.debug(method + "parametri: usrIdentity[" + usrIdentity + "]");
+        // logger.debug(method + "attributeMap [" + attributeMap + " ]");
 
         try {
             // aggiorna l'utente
-            if (debug.messageEnabled())
-                debug.message(method + "inizio update utente SPID [" + usrIdentity.getName() + "]... ");
+
+            logger.debug(method + "inizio update utente SPID [" + usrIdentity.getName() + "]... ");
 
             String sDefaultEmail = getCorrAttrLDAP(attributeSPIDMap, "email");
             String sDefaultMobile = getCorrAttrLDAP(attributeSPIDMap, "mobilePhone");
@@ -1455,26 +1439,26 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                                 || userAttr.equalsIgnoreCase("st") || userAttr.equalsIgnoreCase("postalCode")) {
                             /* se cdmSIPOUpdated = false -> modificare anche address */
                             if (updateAddress) {
-                                if (debug.messageEnabled())
-                                    debug.message(method + "updateAddress TRUE");
+
+                                logger.debug(method + "updateAddress TRUE");
                                 if (actualAttrVal != null && !actualAttrVal.isEmpty()) {
                                     for (String valore : actualAttrVal) {
                                         if (!valore.equals(sVals)) {
                                             updateIDMUser = true;
                                             // se sono diversi imposta l'attributo
                                             attrs.put(userAttr, vals);
-                                            if (debug.messageEnabled())
-                                                debug.message(method + "userAttr[" + userAttr + "] actualAttrVal: "
-                                                        + actualAttrVal.toString()
-                                                        + " vals[ " + vals + "]");
+
+                                            logger.debug(method + "userAttr[" + userAttr + "] actualAttrVal: "
+                                                    + actualAttrVal.toString()
+                                                    + " vals[ " + vals + "]");
                                         }
                                     }
                                 } else {
                                     updateIDMUser = true;
                                     // se il valore attuale � null e quello SAML no lo imposta
                                     attrs.put(userAttr, vals);
-                                    if (debug.messageEnabled())
-                                        debug.message(method + userAttr + ": " + vals);
+
+                                    logger.debug(method + userAttr + ": " + vals);
                                 }
                             }
                         } else {
@@ -1495,19 +1479,19 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                                             // !sActualValueMobile.equalsIgnoreCase(sVals) ) {
                                             if (!actualVal.equalsIgnoreCase(sVals)) {
                                                 updateIDMUser = true;
-                                                if (debug.messageEnabled())
-                                                    debug.message(method + " updateIDMUser - sVals: " + sVals
-                                                            + " actualAttrVal: " + actualVal);
+
+                                                logger.debug(method + " updateIDMUser - sVals: " + sVals
+                                                        + " actualAttrVal: " + actualVal);
                                                 /*
                                                  * if( !sActualValueMobile.equalsIgnoreCase(sVals) ) {
-                                                 * if(debug.messageEnabled())
-                                                 * debug.message(method + "sVals: " +sVals + " actualAttrVal: " +
+                                                 * if(logger.debugEnabled())
+                                                 * logger.debug(method + "sVals: " +sVals + " actualAttrVal: " +
                                                  * actualVal + " sActualValueMobile: " + sActualValueMobile );
                                                  * //se sono diversi o il mobile attuale o il mobile SPID imposta
                                                  * l'attributo SPID_MOBILE_ATTR ed il relativo flag
                                                  * flagMobileChanged();
-                                                 * if(debug.messageEnabled())
-                                                 * debug.message(method + SPID_MOBILE_ATTR + ": " + vals +
+                                                 * if(logger.debugEnabled())
+                                                 * logger.debug(method + SPID_MOBILE_ATTR + ": " + vals +
                                                  * "flagMobileChanged: " + mobileChanged());
                                                  * }
                                                  */
@@ -1516,9 +1500,9 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                                             // se l'attuale mobile dell'utente e null imposta comunque lo
                                             // SPID_MOBILE_ATTR
                                             attrs.put(SPID_MOBILE_ATTR, vals);
-                                            if (debug.messageEnabled())
-                                                debug.message(method + "set[" + SPID_MOBILE_ATTR
-                                                        + "] valore Attributo sActualValueMobile NULL ... ");
+
+                                            logger.debug(method + "set[" + SPID_MOBILE_ATTR
+                                                    + "] valore Attributo sActualValueMobile NULL ... ");
                                         }
 
                                     }
@@ -1534,14 +1518,14 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                                     // if (sActualValueMobilePhoneSpidAziende != null) {
                                     // if (!actualVal.equals(sVals)) {
                                     // updateIDMUser = true;
-                                    // debug.message(method + " updateIDMUser CDM_MOBILE_PHONE_DELEGATO_ATTR -
+                                    // logger.debug(method + " updateIDMUser CDM_MOBILE_PHONE_DELEGATO_ATTR -
                                     // sVals: " + sVals + " actualAttrVal: " + actualVal);
                                     // }
                                     // } else {
                                     // //se l'attuale email dell'utente e null imposta comunque lo
                                     // CDM_MOBILE_PHONE_DELEGATO_ATTR
                                     // attrs.put(CDM_MOBILE_PHONE_DELEGATO_ATTR, vals);
-                                    // debug.error(method + "set[" + CDM_MOBILE_PHONE_DELEGATO_ATTR + "] valore
+                                    // logger.error(method + "set[" + CDM_MOBILE_PHONE_DELEGATO_ATTR + "] valore
                                     // Attributo sActualValueMobilePhoneSpidAziende NULL ... ");
                                     // }
                                     //
@@ -1556,14 +1540,14 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                                     // if (sActualValueEmailSpidAziende != null) {
                                     // if (!actualVal.equals(sVals)) {
                                     // updateIDMUser = true;
-                                    // debug.message(method + " updateIDMUser CDM_EMAIL_DELEGATO_ATTR - sVals: " +
+                                    // logger.debug(method + " updateIDMUser CDM_EMAIL_DELEGATO_ATTR - sVals: " +
                                     // sVals + " actualAttrVal: " + actualVal);
                                     // }
                                     // } else {
                                     // //se l'attuale email dell'utente e null imposta comunque lo
                                     // CDM_EMAIL_DELEGATO_ATTR
                                     // attrs.put(CDM_EMAIL_DELEGATO_ATTR, vals);
-                                    // debug.error(method + "set[" + CDM_EMAIL_DELEGATO_ATTR + "] valore Attributo
+                                    // logger.error(method + "set[" + CDM_EMAIL_DELEGATO_ATTR + "] valore Attributo
                                     // sActualValueEmailSpidAziende NULL ... ");
                                     // }
                                     else if (userAttr.equalsIgnoreCase(SPID_MAIL_ATTR)) {
@@ -1575,16 +1559,16 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                                             // !sActualValueEmail.equalsIgnoreCase(sVals) ) {
                                             if (!actualVal.equals(sVals)) {
                                                 updateIDMUser = true;
-                                                if (debug.messageEnabled())
-                                                    debug.message(method + " updateIDMUser - sVals: " + sVals
-                                                            + " actualAttrVal: " + actualVal);
+
+                                                logger.debug(method + " updateIDMUser - sVals: " + sVals
+                                                        + " actualAttrVal: " + actualVal);
                                             }
                                         } else {
                                             // se l'attuale email dell'utente e null imposta comunque lo SPID_MAIL_ATTR
                                             attrs.put(SPID_MAIL_ATTR, vals);
-                                            if (debug.messageEnabled())
-                                                debug.message(method + "set[" + SPID_MAIL_ATTR
-                                                        + "]  valore Attributo sActualValueEmail NULL ... ");
+
+                                            logger.debug(method + "set[" + SPID_MAIL_ATTR
+                                                    + "]  valore Attributo sActualValueEmail NULL ... ");
                                         }
                                     } else {
                                         if (!actualVal.equalsIgnoreCase(sVals)) {
@@ -1597,10 +1581,10 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                                                     && !userAttr.equalsIgnoreCase(SPIDCODE_ATTR)
                                                     && !userAttr.equalsIgnoreCase(DIGITALADDR_ATTR)) {
                                                 updateIDMUser = true;
-                                                if (debug.messageEnabled())
-                                                    debug.message(method + "userAttr[" + userAttr + "] actualAttrVal: "
-                                                            + actualAttrVal.toString()
-                                                            + " vals[ " + vals + "]");
+
+                                                logger.debug(method + "userAttr[" + userAttr + "] actualAttrVal: "
+                                                        + actualAttrVal.toString()
+                                                        + " vals[ " + vals + "]");
                                             }
                                         }
                                     }
@@ -1618,8 +1602,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                                                 updateIDMUser = true;
                                                 // se il valore attuale � null e quello SAML no lo imposta
                                                 attrs.put(userAttr, vals);
-                                                if (debug.messageEnabled())
-                                                    debug.message(method + userAttr + ": " + vals);
+
+                                                logger.debug(method + userAttr + ": " + vals);
                                             }
                                         }
                                     }
@@ -1628,14 +1612,14 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                         }
                     } else {
                         // se il valore del SAML � null
-                        if (debug.messageEnabled())
-                            debug.message(method + " valore Attributo SAML [" + userAttr + "] NULL ... ");
+
+                        logger.debug(method + " valore Attributo SAML [" + userAttr + "] NULL ... ");
                         if (actualAttrVal != null && !actualAttrVal.isEmpty()) {
                             updateIDMUser = true;
                             // se il valore SAML � null ma l'attuale valore dell'attr non lo � lo svuota
                             attrs.put(userAttr, new HashSet<String>());
-                            if (debug.messageEnabled())
-                                debug.message(method + userAttr + " set VUOTO! ");
+
+                            logger.debug(method + userAttr + " set VUOTO! ");
                         }
                     }
                 }
@@ -1655,36 +1639,36 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                             try {
                                 restUtil = new CustomEidasAziendeRestUtil(idmRestURL, idmRestURL_admin, idmRestURL_pwd);
                                 if (restUtil.updateIDMUser(usrIdentity.getName(), attrs))
-                                    debug.message(method + " OK Chiamata REST IDM user[" + usrIdentity.getName()
+                                    logger.debug(method + " OK Chiamata REST IDM user[" + usrIdentity.getName()
                                             + "] Aggiornato");
                                 else {
-                                    debug.error(method + "ERRORE chiamata rest [" + idmRestURL + "]  IDM user["
+                                    logger.error(method + "ERRORE chiamata rest [" + idmRestURL + "]  IDM user["
                                             + usrIdentity.getName() + "]");
                                     // return false; //si � scelto di non interrompere l'accesso in caso di
                                     // eccezioni o errori nella chiamata REST
                                 }
                             } catch (Exception e) {
-                                debug.error(method + "ERRORE chiamata rest [" + idmRestURL + "] IDM user ["
+                                logger.error(method + "ERRORE chiamata rest [" + idmRestURL + "] IDM user ["
                                         + usrIdentity.getName() + "]:: " + e.getMessage());
                             }
                         } else {
-                            if (debug.messageEnabled())
-                                debug.message(method + " aggiornamento IDM non effettuato per user["
-                                        + usrIdentity.getName() + "]:: aggiornamento non necessario");
+
+                            logger.debug(method + " aggiornamento IDM non effettuato per user["
+                                    + usrIdentity.getName() + "]:: aggiornamento non necessario");
                         }
                     } else {
-                        if (debug.messageEnabled())
-                            debug.message(method + " chiamata rest IDM disabilitata per Base URL nullo o vuoto ");
+
+                        logger.debug(method + " chiamata rest IDM disabilitata per Base URL nullo o vuoto ");
                     }
 
                     return true;
                 }
             } else
-                debug.error(method + "Errore attributeMap NULL!!!");
+                logger.error(method + "Errore attributeMap NULL!!!");
         } catch (SSOException e) {
-            debug.error(method + "SSOException: ", e);
+            logger.error(method + "SSOException: ", e);
         } catch (IdRepoException e) {
-            debug.error(method + "IdRepoException: ", e);
+            logger.error(method + "IdRepoException: ", e);
         }
         return false;
     }
@@ -1705,18 +1689,16 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
             List<Attribute> attributes, String userID, Map<String, List<?>> userAttrMap)
             throws ParseException {
         String method = "[setUpdateUserAttrMap]";
-        if (debug.messageEnabled())
-            debug.message(method + "inizio ... ");
 
-        if (debug.messageEnabled())
-            debug.message(method + "******* INIZIO Iterator User [" + userID + "] - Attributi Asserzione ********");
+        logger.debug(method + "inizio ... ");
+
+        logger.debug(method + "******* INIZIO Iterator User [" + userID + "] - Attributi Asserzione ********");
 
         for (Iterator<Attribute> iter = attributes.iterator(); iter.hasNext();) {
             Attribute attribute = iter.next();
 
-            if (debug.messageEnabled())
-                debug.message(method + " GESTICO ---> " + attribute.getName() + "/// VALORE ---> "
-                        + attribute.getAttributeValueString());
+            logger.debug(method + " GESTICO ---> " + attribute.getName() + "/// VALORE ---> "
+                    + attribute.getAttributeValueString());
 
             if (attribute.getName() != null && attribute.getAttributeValueString() != null) {
                 if (getAttrAssertion(attribute.getAttributeValueString()) != null &&
@@ -1728,9 +1710,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                             userAttrMap.put(getCorrAttrLDAP(attributeMap, "fiscalNumber"),
                                     Arrays.asList(codfisc.substring(TINSUFF.length())));
 
-                            if (debug.messageEnabled())
-                                debug.message(method + "Attr Assertion MAP - fiscalNumber: "
-                                        + codfisc.substring(TINSUFF.length()));
+                            logger.debug(method + "Attr Assertion MAP - fiscalNumber: "
+                                    + codfisc.substring(TINSUFF.length()));
                         }
                     } else if (attribute.getName().equalsIgnoreCase(SPID_IVACODE_ATTRNAME)
                             && attribute.getAttributeValueString() != null) {
@@ -1755,24 +1736,24 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                             && attribute.getAttributeValueString() != null) {
                         // attributo SpidMail
                         String sSpidEmail = getAttrAssertion(util.getAttributeVal(attributes, "email"));
-                        if (debug.messageEnabled())
-                            debug.message(method + " -- (" + SPID_MAIL_ATTR + "): " + sSpidEmail);
+
+                        logger.debug(method + " -- (" + SPID_MAIL_ATTR + "): " + sSpidEmail);
                         userAttrMap.put(SPID_MAIL_ATTR, Arrays.asList(sSpidEmail));
                     } else if (attribute.getName().equalsIgnoreCase("mobilePhone")
                             && attribute.getAttributeValueString() != null) {
                         // attributo SpidMobile
                         String sSpidMobile = getAttrAssertion(util.getAttributeVal(attributes, "mobilePhone"));
-                        if (debug.messageEnabled())
-                            debug.message(method + " -- (" + SPID_MOBILE_ATTR + "): " + sSpidMobile);
+
+                        logger.debug(method + " -- (" + SPID_MOBILE_ATTR + "): " + sSpidMobile);
                         userAttrMap.put(SPID_MOBILE_ATTR, Arrays.asList(sSpidMobile));
                     } else {
                         List<String> lAttrLDAP = getAllCorrAttrLDAP(attributeMap, attribute.getName());
                         String attrLDAPVal = getAttrAssertion(attribute.getAttributeValueString());
                         if (lAttrLDAP != null) { // aggiunto
                             for (String attrLDAP : lAttrLDAP) {
-                                if (debug.messageEnabled())
-                                    debug.message(
-                                            method + "Generic Attr Assertion MAP - " + attrLDAP + " : " + attrLDAPVal);
+
+                                logger.debug(
+                                        method + "Generic Attr Assertion MAP - " + attrLDAP + " : " + attrLDAPVal);
                                 userAttrMap.put(attrLDAP, Arrays.asList(attrLDAPVal));
                             }
                         }
@@ -1782,13 +1763,13 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                     if (attribute.getName().equalsIgnoreCase("fiscalNumber")
                             && attribute.getAttributeValueString() != null) {
                         // userAttrMap.put(getCorrAttrLDAP(attributeMap, "fiscalNumber"), null );
-                        debug.error(method + "Attr Assertion MAP - fiscalNumber: NULL !!!");
+                        logger.error(method + "Attr Assertion MAP - fiscalNumber: NULL !!!");
                     } else if (attribute.getName().equalsIgnoreCase(SPID_IVACODE_ATTRNAME)
                             && attribute.getAttributeValueString() != null) {
                         // TODO che fare in caso di Partira IVA NULL ...
                         userAttrMap.put(getCorrAttrLDAP(attributeMap, attribute.getName()), null);
-                        if (debug.messageEnabled())
-                            debug.message(method + "Attr Assertion MAP - " + SPID_IVACODE_ATTRNAME + ": NULL !!!");
+
+                        logger.debug(method + "Attr Assertion MAP - " + SPID_IVACODE_ATTRNAME + ": NULL !!!");
                     }
 
                     // MODIFICA LOG EIDAS AZIENDE
@@ -1798,39 +1779,39 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                     else if (attribute.getName().equalsIgnoreCase(SPID_COMPANY_FISCAL_NUMBER_ATTRNAME)
                             && attribute.getAttributeValueString() != null) {
                         userAttrMap.put(CDM_COMPANY_FISCAL_NUMBER_ATTRNAME, null);
-                        if (debug.messageEnabled())
-                            debug.message(method + "Attr Assertion MAP - " + CDM_COMPANY_FISCAL_NUMBER_ATTRNAME
-                                    + ": NULL !!!");
+
+                        logger.debug(method + "Attr Assertion MAP - " + CDM_COMPANY_FISCAL_NUMBER_ATTRNAME
+                                + ": NULL !!!");
                     } else if (attribute.getName().equalsIgnoreCase("email")
                             && attribute.getAttributeValueString() != null) {
                         // attributo SpidMail
                         userAttrMap.put(SPID_MAIL_ATTR, null);
-                        if (debug.messageEnabled())
-                            debug.message(method + " -- (" + SPID_MAIL_ATTR + "): NULL!!! ");
+
+                        logger.debug(method + " -- (" + SPID_MAIL_ATTR + "): NULL!!! ");
                     } else if (attribute.getName().equalsIgnoreCase("mobilePhone")
                             && attribute.getAttributeValueString() != null) {
                         // attributo SpidMobile
                         userAttrMap.put(SPID_MOBILE_ATTR, null);
-                        if (debug.messageEnabled())
-                            debug.message(method + " -- (" + SPID_MOBILE_ATTR + "): NULL!! ");
+
+                        logger.debug(method + " -- (" + SPID_MOBILE_ATTR + "): NULL!! ");
                     } else {
                         List<String> lAttrLDAP = getAllCorrAttrLDAP(attributeMap, attribute.getName());
                         for (String attrLDAP : lAttrLDAP) {
-                            if (debug.messageEnabled())
-                                debug.message(method + "Generic Attr Assertion MAP - " + attrLDAP + " : NULL!!");
+
+                            logger.debug(method + "Generic Attr Assertion MAP - " + attrLDAP + " : NULL!!");
                             userAttrMap.put(getCorrAttrLDAP(attributeMap, attribute.getName()), null);
                         }
                     }
                 }
             }
         }
-        if (debug.messageEnabled())
-            debug.message(method + "******* FINE Iterator User [" + userID + "] - Attributi Asserzione ********");
+
+        logger.debug(method + "******* FINE Iterator User [" + userID + "] - Attributi Asserzione ********");
 
         /* CDM */
         if (setCDMAttribute) {
-            if (debug.messageEnabled())
-                debug.message(method + "******* INIZIO setCDMAttribute User [" + userID + "] - Attributi CDM ********");
+
+            logger.debug(method + "******* INIZIO setCDMAttribute User [" + userID + "] - Attributi CDM ********");
             // CN
             if (userAttrMap.get("cn") != null)
                 userAttrMap.remove("cn");
@@ -1865,7 +1846,7 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                         }
                     }
                 } catch (IndexOutOfBoundsException ex) {
-                    debug.error(method, ex.getLocalizedMessage());
+                    logger.error(method, ex.getLocalizedMessage());
                 }
             }
 
@@ -1875,13 +1856,13 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
              */
             if (getAttrAssertion(util.getAttributeVal(attributes, "registeredOffice")) != null) {
 
-                debug.error("registeredOffice ---> "
+                logger.error("registeredOffice ---> "
                         + getAttrAssertion(util.getAttributeVal(attributes, "registeredOffice")));
 
                 try {
                     String sAddress = getAttrAssertion(util.getAttributeVal(attributes, "registeredOffice"));
 
-                    debug.error("Address ---> " + sAddress);
+                    logger.error("Address ---> " + sAddress);
 
                     Map<String, String> mAddress = getAddressElementOffice(sAddress);
 
@@ -1892,7 +1873,7 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                         userAttrMap.put("cdmSedeComune", Arrays.asList(mAddress.get("cdmSedeComune").toString()));
                     }
                 } catch (IndexOutOfBoundsException ex) {
-                    debug.error(method, ex.getLocalizedMessage());
+                    logger.error(method, ex.getLocalizedMessage());
                 }
             }
 
@@ -1901,8 +1882,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                     !getAttrAssertion(util.getAttributeVal(attributes, "dateOfBirth")).isEmpty()) {
                 DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
                 String sdataNascDate = getAttrAssertion(util.getAttributeVal(attributes, "dateOfBirth"));
-                if (debug.messageEnabled())
-                    debug.message(method + " -- (sdataNascDate): " + sdataNascDate);
+
+                logger.debug(method + " -- (sdataNascDate): " + sdataNascDate);
                 Date dataNascDate = dateFormat.parse(sdataNascDate);
 
                 // cdmNascitaData
@@ -1910,8 +1891,7 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                         Arrays.asList(new SimpleDateFormat("yyyyMMdd000000").format(dataNascDate)));
             }
 
-            if (debug.messageEnabled())
-                debug.message(method + "******* FINE setCDMAttribute User [" + userID + "] - Attributi CDM ********");
+            logger.debug(method + "******* FINE setCDMAttribute User [" + userID + "] - Attributi CDM ********");
         }
 
         return userAttrMap;
@@ -1934,19 +1914,19 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
         if (assertionMailAttrVal != null && !assertionMailAttrVal.isEmpty()) {
             if (ldapSPIDMailAttrVal != null && !assertionMailAttrVal.equalsIgnoreCase(ldapSPIDMailAttrVal)) {
                 if (ldapMailAttrVal != null && !assertionMailAttrVal.equalsIgnoreCase(ldapMailAttrVal)) {
-                    if (debug.messageEnabled())
-                        debug.message(method + "rilevato cambio email, imposto mailChangedFlag a true ");
+
+                    logger.debug(method + "rilevato cambio email, imposto mailChangedFlag a true ");
                     return "true";
                 }
             } else if (ldapSPIDMailAttrVal == null && ldapMailAttrVal != null
                     && !assertionMailAttrVal.equalsIgnoreCase(ldapMailAttrVal)) {
-                if (debug.messageEnabled())
-                    debug.message(method + "ldapSPIDMailAttrVal null, imposto mailChangedFlag a true ");
+
+                logger.debug(method + "ldapSPIDMailAttrVal null, imposto mailChangedFlag a true ");
                 return "true";
             }
         } else {
-            if (debug.messageEnabled())
-                debug.message(method + "attributo email non presente nell'asserzione ");
+
+            logger.debug(method + "attributo email non presente nell'asserzione ");
         }
         return "false";
     }
@@ -1970,20 +1950,20 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                     .equalsIgnoreCase(ldapSPIDMobileAttrVal.replaceAll("^(\\+39|0039)", ""))) {
                 if (ldapMobileAttrVal != null && !assertionMobileAttrVal.replaceAll("^(\\+39|0039)", "")
                         .equalsIgnoreCase(ldapMobileAttrVal.replaceAll("^(\\+39|0039)", ""))) {
-                    if (debug.messageEnabled())
-                        debug.message(method + "rilevato cambio mobilePhone, imposto mobileChangedFlag a true ");
+
+                    logger.debug(method + "rilevato cambio mobilePhone, imposto mobileChangedFlag a true ");
                     return "true";
                 }
             } else if (ldapSPIDMobileAttrVal == null && ldapMobileAttrVal != null
                     && !assertionMobileAttrVal.replaceAll("^(\\+39|0039)", "")
                             .equalsIgnoreCase(ldapMobileAttrVal.replaceAll("^(\\+39|0039)", ""))) {
-                if (debug.messageEnabled())
-                    debug.message(method + "ldapSPIDMobileAttrVal null, imposto mobileChangedFlag a true ");
+
+                logger.debug(method + "ldapSPIDMobileAttrVal null, imposto mobileChangedFlag a true ");
                 return "true";
             }
         } else {
-            if (debug.messageEnabled())
-                debug.message(method + "attributo mobilePhone non presente nell'asserzione ");
+
+            logger.debug(method + "attributo mobilePhone non presente nell'asserzione ");
         }
         return "false";
     }
@@ -2006,9 +1986,9 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
         } catch (ParseException e) {
             e.printStackTrace();
             if (ldapDate == null)
-                debug.error(method + "ldapDate is NULL");
+                logger.error(method + "ldapDate is NULL");
             else
-                debug.error(method + "errore durante il parsing di ldapDate");
+                logger.error(method + "errore durante il parsing di ldapDate");
         }
         return null;
     }
@@ -2029,8 +2009,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
      */
     public HashMap<String, String> getPostLoginFlags(String realm, Response ssoResponse, String hostEntityID) {
         String method = "[getPostLoginFlags]:: ";
-        if (debug.messageEnabled())
-            debug.message(method + "inizio ... ");
+
+        logger.debug(method + "inizio ... ");
 
         // Inizializzo tutti i flags a false
         HashMap<String, String> postLoginFlags = new HashMap<String, String>(); // Mappa contenente i flags
@@ -2055,12 +2035,12 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                 assertion = ssoResponse.getAssertion().get(0);
                 attributeStatements = assertion.getAttributeStatements();
             } else
-                debug.error(method + "ssoResponse null o impossibile estrarre asserzione ");
+                logger.error(method + "ssoResponse null o impossibile estrarre asserzione ");
             // Inserisco in una Lista gli attributi dell'attributeStatements dall'asserzione
             if (attributeStatements != null) {
                 assertionAttributes = attributeStatements.get(0).getAttribute();
             } else
-                debug.error(method + "attributeStatements null ");
+                logger.error(method + "attributeStatements null ");
 
             // Recupero l'attributo da utilizzare per la ricerca dell'utente
             if (assertionAttributes != null) {
@@ -2072,12 +2052,12 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                 // // Recupero il nome dell'attributo
                 // String autoFedAttr = getAttribute(realm, hostEntityID,
                 // SAML2Constants.AUTO_FED_ATTRIBUTE);
-                // if (debug.messageEnabled())
-                // debug.message(method + "attributo di auto federazione autoFedAttr: " +
+                //
+                // logger.debug(method + "attributo di auto federazione autoFedAttr: " +
                 // autoFedAttr);
                 // if (autoFedAttr != null) {
-                // if (debug.messageEnabled())
-                // debug.message(method + "utilizzo l'attributo di auto federazione come
+                //
+                // logger.debug(method + "utilizzo l'attributo di auto federazione come
                 // UserID");
 
                 cdmPartitaIva = getAttrAssertion(util.getAttributeVal(assertionAttributes, "ivaCode"))
@@ -2093,10 +2073,10 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                 // Eseguo il substring nel caso inizi con il prefisso TINSUFF
                 // if (userID != null && userID.startsWith(TINSUFF))
                 // userID = userID.substring(TINSUFF.length());
-                // if (debug.messageEnabled())
-                // debug.message(method + "userID: " + userID);
+                //
+                // logger.debug(method + "userID: " + userID);
                 // } else
-                // debug.error(method + "attributo di autofederazione NON definito.");
+                // logger.error(method + "attributo di autofederazione NON definito.");
                 // } else { // Altrimenti utilizzo il nameID (se indicato nell'Entity Provider)
                 // // Recupero il NameID dall'asserzione
                 // NameID nameID = util.getNameID(assertion, hostEntityID, realm);
@@ -2106,22 +2086,22 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                 // String useNameID = getAttribute(realm, hostEntityID,
                 // SAML2Constants.USE_NAMEID_AS_SP_USERID);
                 // if ((useNameID != null) && useNameID.equalsIgnoreCase("true")) {
-                // if (debug.messageEnabled())
-                // debug.message(method + "utilizzo NameID come UserID");
+                //
+                // logger.debug(method + "utilizzo NameID come UserID");
                 // // Recupero il valore del nameID
                 // userID = nameID.getValue().toUpperCase();
                 // // Eseguo il substring nel caso inizi con il prefisso TINSUFF
                 // if (userID != null && userID.startsWith(TINSUFF))
                 // userID = userID.substring(TINSUFF.length());
-                // if (debug.messageEnabled())
-                // debug.message(method + "userID: " + userID);
+                //
+                // logger.debug(method + "userID: " + userID);
                 // } else
-                // debug.error(method + "useNameID NULL or useNameID is FALSE : " + useNameID);
+                // logger.error(method + "useNameID NULL or useNameID is FALSE : " + useNameID);
                 // } else
-                // debug.error(method + "NameID from assertion null ");
+                // logger.error(method + "NameID from assertion null ");
                 // }
             } else
-                debug.error(method + "nessun attributo trovato nell'asserzione SAML ");
+                logger.error(method + "nessun attributo trovato nell'asserzione SAML ");
 
             // Eseguo la ricerca dell'utente
             if ((cdmPartitaIva != null && !cdmPartitaIva.isEmpty())
@@ -2129,8 +2109,7 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
 
                 String uidSearch = cdmPartitaIva + "_" + cdmCodiceFiscaleDelegato;
 
-                if (debug.messageEnabled())
-                    debug.message(method + " uidSearch ---> " + uidSearch);
+                logger.debug(method + " uidSearch ---> " + uidSearch);
 
                 List<AMIdentity> users = repoUtil.getUserStoreIdentity(uidSearch, realm);
 
@@ -2191,15 +2170,13 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                         if (users == null || users.isEmpty()) {
                             newCreationFlag = "true";
 
-                            if (debug.messageEnabled())
-                                debug.message(method + "nessun utente trovato, imposto newCreationFlag a true");
+                            logger.debug(method + "nessun utente trovato, imposto newCreationFlag a true");
                         } else {
                             // Altrimenti imposto il newCreationknownFlag a true
                             newCreationknownFlag = "true";
 
-                            if (debug.messageEnabled())
-                                debug.message(method
-                                        + "nuovo utente con account SPID pregressi, imposto newCreationknownFlag a true");
+                            logger.debug(method
+                                    + "nuovo utente con account SPID pregressi, imposto newCreationknownFlag a true");
 
                             // Verifico se impostare a "true" i flags mailChangedFlag e mobileChangedFlag
                             // basandomi sugli account pregressi
@@ -2211,41 +2188,40 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                                 Date lastModifyTimestamp = null;
                                 for (AMIdentity user : users) {
                                     String modifyTimestamp = getAttrFromSet(user.getAttribute("modifyTimestamp"));
-                                    if (debug.messageEnabled())
-                                        debug.message(method + "account pregresso " + user.getName().toString()
-                                                + ", modifyTimestamp " + modifyTimestamp);
+
+                                    logger.debug(method + "account pregresso " + user.getName().toString()
+                                            + ", modifyTimestamp " + modifyTimestamp);
 
                                     Date ldapDate = parseLdapDate(modifyTimestamp);
                                     if (lastModifyTimestamp != null && ldapDate != null) {
                                         if (lastModifyTimestamp.compareTo(ldapDate) < 0) {
                                             lastModifyTimestamp = ldapDate;
                                             lastUserIdentity = user;
-                                            if (debug.messageEnabled())
-                                                debug.message(method
-                                                        + "lastModifyTimestamp � maggiore di ldapDate, per ora questo � l'utente pi� recente");
+
+                                            logger.debug(method
+                                                    + "lastModifyTimestamp � maggiore di ldapDate, per ora questo � l'utente pi� recente");
                                         } else {
-                                            if (debug.messageEnabled())
-                                                debug.message(method
-                                                        + "lastModifyTimestamp � minore di ldapDate, l'utente non � il pi� recente");
+
+                                            logger.debug(method
+                                                    + "lastModifyTimestamp � minore di ldapDate, l'utente non � il pi� recente");
                                         }
                                     } else {
                                         lastUserIdentity = user;
                                         lastModifyTimestamp = ldapDate;
-                                        if (debug.messageEnabled())
-                                            debug.message(method
-                                                    + "primo account ciclato, per ora considero questo come utente modificato pi� recentemente");
+
+                                        logger.debug(method
+                                                + "primo account ciclato, per ora considero questo come utente modificato pi� recentemente");
                                     }
                                 }
-                                if (debug.messageEnabled())
-                                    debug.message(method + "account pregresso pi� recente = "
-                                            + lastUserIdentity.getName().toString());
+
+                                logger.debug(method + "account pregresso pi� recente = "
+                                        + lastUserIdentity.getName().toString());
                             } else {
                                 // Altrimenti prendo l'unico utente rilevato
                                 lastUserIdentity = users.get(0);
 
-                                if (debug.messageEnabled())
-                                    debug.message(
-                                            method + "account pregresso " + lastUserIdentity.getName().toString());
+                                logger.debug(
+                                        method + "account pregresso " + lastUserIdentity.getName().toString());
                             }
 
                             Map<String, List<String>> attrMap = getAttributeMap(hostEntityID, realm); // Mappa dei nomi
@@ -2271,10 +2247,10 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
 
                             if (mailChangedFlag.equalsIgnoreCase("true")) {
                                 oldMail = ldapMailAttr + "=" + ldapMailAttrVal;
-                                if (debug.messageEnabled())
-                                    debug.message(
-                                            method + "rilevato mailChangedFlag da account pregresso, imposto oldMail = "
-                                                    + oldMail);
+
+                                logger.debug(
+                                        method + "rilevato mailChangedFlag da account pregresso, imposto oldMail = "
+                                                + oldMail);
                             }
 
                             /* -- Verifica dell'attributo Mobile -- */
@@ -2295,16 +2271,16 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
 
                             if (mobileChangedFlag.equalsIgnoreCase("true")) {
                                 oldMobile = ldapMobileAttr + "=" + ldapMobileAttrVal;
-                                if (debug.messageEnabled())
-                                    debug.message(method
-                                            + "rilevato mobileChangedFlag da account pregresso, imposto oldMobile = "
-                                            + oldMobile);
+
+                                logger.debug(method
+                                        + "rilevato mobileChangedFlag da account pregresso, imposto oldMobile = "
+                                        + oldMobile);
                             }
                         }
                     } else { // Altrimenti imposto semplicemente newCreationFlag a true
                         newCreationFlag = "true";
-                        if (debug.messageEnabled())
-                            debug.message(method + "nessun utente trovato, imposto newCreationFlag a true");
+
+                        logger.debug(method + "nessun utente trovato, imposto newCreationFlag a true");
                     }
                 } else { // Altrimenti verifico se impostare a "true" i flags mailChangedFlag e
                          // mobileChangedFlag
@@ -2314,8 +2290,8 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                                                                                               // attributi
                                                                                               // Asserzione=LDAP (presi
                                                                                               // da console AM)
-                    if (debug.messageEnabled())
-                        debug.message(method + "utente " + userIdentity.getName().toString() + " trovato ");
+
+                    logger.debug(method + "utente " + userIdentity.getName().toString() + " trovato ");
 
                     /* -- Verifica dell'attributo Mail -- */
                     String ldapMailAttr = getCorrAttrLDAP(attrMap, "email"); // Nome dell'attributo LDAP corrispondente
@@ -2346,9 +2322,9 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
                             ldapMobileAttrVal);
                 }
             } else
-                debug.error(method + "impossibile recuperare userID da asserzione");
+                logger.error(method + "impossibile recuperare userID da asserzione");
         } catch (Exception e) {
-            debug.error(method + "Exception: ", e);
+            logger.error(method + "Exception: ", e);
         }
         postLoginFlags.put("newCreationFlag", newCreationFlag);
         postLoginFlags.put("mailChangedFlag", mailChangedFlag);
@@ -2358,8 +2334,7 @@ public class SPIDEidasAziendeSpAccountMapper<ele> extends DefaultLibrarySPAccoun
         postLoginFlags.put("oldMail", oldMail);
         postLoginFlags.put("oldMobile", oldMobile);
 
-        if (debug.messageEnabled())
-            debug.message(method + "postLoginFlags: " + Arrays.asList(postLoginFlags));
+        logger.debug(method + "postLoginFlags: " + Arrays.asList(postLoginFlags));
         return postLoginFlags;
     }
 
